@@ -13,23 +13,20 @@
     renderer="antialias: true; alpha: true"
     arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false">
 
-    <!-- Location-based camera -->
-    <a-camera gps-new-camera="gpsMinDistance: 5"></a-camera>
+    <a-camera gps-new-camera="gpsMinDistance: 1"></a-camera>
 
-    <!-- Test box at your coordinates -->
     <a-box
-      color="red"
-      gps-new-entity-place="latitude: 33.4578555; longitude: -111.776166"
-      depth="10" height="10" width="10">
+    color="red"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
+    depth="10" height="10" width="10">
     </a-box>
 
-    <!-- 3D model at same coordinates -->
     <a-entity
-      gltf-model="./assets/magnemite/scene.gltf"
-      rotation="0 180 0"
-      scale="0.15 0.15 0.15"
-      gps-new-entity-place="latitude: 33.4578555; longitude: 111.776166"
-      animation-mixer>
+    gltf-model="./assets/magnemite/scene.gltf"
+    rotation="0 180 0"
+    scale="0.15 0.15 0.15"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
+    animation-mixer>
     </a-entity>
 
   </a-scene>
