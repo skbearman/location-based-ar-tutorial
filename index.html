@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AR.js GPS + Model</title>
+  <title>AR.js GPS + Magnemite</title>
 
+  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+
+  <!-- AR.js with GPS -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
 </head>
@@ -27,7 +30,7 @@
       gps-new-entity-place="latitude:33.45679; longitude:-111.77721">
     </a-box>
 
-    <!-- Magnemite at the same GPS spot -->
+    <!-- Magnemite at the SAME GPS location -->
     <a-entity
       gltf-model="assets/magnemite/scene.gltf"
       rotation="0 180 0"
