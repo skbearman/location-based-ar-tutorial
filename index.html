@@ -93,7 +93,7 @@
   </a-scene>
 
 <script>
-  const THREE = AFRAME.THREE;
+  const THREE      = AFRAME.THREE;
 
   const sceneEl    = document.querySelector('a-scene');
   const cameraEl   = document.querySelector('[gps-new-camera]');
@@ -104,23 +104,33 @@
 
   let selectedEntity = null;
   let gpsReady = false;
+  let lastCoords = null;  // <-- our own copy of the latest GPS coords
 
-  // --- GPS event hook (fires when position updates) ---
+  // Event hook when AR.js updates GPS position
   cameraEl.addEventListener('gps-camera-update-position', (e) => {
     const pos = e.detail.position;
     gpsReady = true;
+    lastCoords = {
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      accuracy: pos.accuracy
+    };
+
     placeBtn.disabled = false;
     placeBtn.textContent = 'Place Magnemite Here';
-    gpsStatus.textContent = `GPS: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`;
+    gpsStatus.textContent =
+      `GPS: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`;
     console.log('gps-camera-update-position', pos);
   });
 
-  // --- Safety: poll currentCoords every second and update status ---
+  // Poll gps-new-camera.currentCoords as a backup, and update lastCoords
   setInterval(() => {
     const gpsComp = cameraEl.components['gps-new-camera'];
     if (!gpsComp || !gpsComp.currentCoords) return;
 
     const { latitude, longitude, accuracy } = gpsComp.currentCoords;
+    lastCoords = { latitude, longitude, accuracy };  // <-- keep latest
+
     gpsStatus.textContent =
       `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${accuracy || '??'}m)`;
 
@@ -131,15 +141,17 @@
     }
   }, 1000);
 
-  // --- Place Magnemite at current GPS coords ---
+  // Place Magnemite at last known GPS coords
   placeBtn.addEventListener('click', () => {
-    const gpsComp = cameraEl.components['gps-new-camera'];
-    if (!gpsComp || !gpsComp.currentCoords) {
+    if (!lastCoords) {
       placeBtn.textContent = 'No GPS coords yet…';
+      setTimeout(() => {
+        placeBtn.textContent = gpsReady ? 'Place Magnemite Here' : 'Getting GPS…';
+      }, 1500);
       return;
     }
 
-    const { latitude, longitude } = gpsComp.currentCoords;
+    const { latitude, longitude } = lastCoords;
 
     const entity = document.createElement('a-entity');
     entity.setAttribute('gltf-model', '#magnemite');
@@ -162,7 +174,7 @@
     console.log('Placed Magnemite at', latitude, longitude, 'yaw', yaw);
   });
 
-  // --- Rotate selected ---
+  // Rotate last placed Magnemite
   function rotateSelected(deltaDeg) {
     if (!selectedEntity) return;
     const rot = selectedEntity.getAttribute('rotation') || {x:0, y:0, z:0};
