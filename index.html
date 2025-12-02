@@ -47,10 +47,26 @@
       background: #555;
       opacity: 0.6;
     }
+
+    #gps-status {
+      position: fixed;
+      top: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      font-size: 0.75rem;
+      z-index: 10;
+    }
   </style>
 </head>
 
 <body>
+
+  <!-- GPS debug text -->
+  <div id="gps-status">GPS: waiting…</div>
 
   <!-- UI -->
   <div id="ui">
@@ -79,40 +95,51 @@
 <script>
   const THREE = AFRAME.THREE;
 
-  const sceneEl  = document.querySelector('a-scene');
-  const cameraEl = document.querySelector('[gps-new-camera]');
-
-  const placeBtn = document.getElementById('place-btn');
-  const rotLeft  = document.getElementById('rot-left');
-  const rotRight = document.getElementById('rot-right');
+  const sceneEl    = document.querySelector('a-scene');
+  const cameraEl   = document.querySelector('[gps-new-camera]');
+  const gpsStatus  = document.getElementById('gps-status');
+  const placeBtn   = document.getElementById('place-btn');
+  const rotLeftBtn = document.getElementById('rot-left');
+  const rotRightBtn= document.getElementById('rot-right');
 
   let selectedEntity = null;
   let gpsReady = false;
 
-  // ------------------------------------
-  // GPS READY HANDLER
-  // ------------------------------------
+  // --- GPS event hook (fires when position updates) ---
   cameraEl.addEventListener('gps-camera-update-position', (e) => {
+    const pos = e.detail.position;
     gpsReady = true;
     placeBtn.disabled = false;
     placeBtn.textContent = 'Place Magnemite Here';
-    
-    console.log('GPS ready:', e.detail.position);
+    gpsStatus.textContent = `GPS: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`;
+    console.log('gps-camera-update-position', pos);
   });
 
-  // ------------------------------------
-  // PLACE MAGNEMITE AT CAMERA'S GPS
-  // ------------------------------------
-  placeBtn.addEventListener('click', () => {
-    if (!gpsReady) return;
+  // --- Safety: poll currentCoords every second and update status ---
+  setInterval(() => {
+    const gpsComp = cameraEl.components['gps-new-camera'];
+    if (!gpsComp || !gpsComp.currentCoords) return;
 
-    const gps = cameraEl.components['gps-new-camera'];
-    if (!gps || !gps.currentCoords) {
-      placeBtn.textContent = 'GPS unavailable';
+    const { latitude, longitude, accuracy } = gpsComp.currentCoords;
+    gpsStatus.textContent =
+      `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${accuracy || '??'}m)`;
+
+    if (!gpsReady) {
+      gpsReady = true;
+      placeBtn.disabled = false;
+      placeBtn.textContent = 'Place Magnemite Here';
+    }
+  }, 1000);
+
+  // --- Place Magnemite at current GPS coords ---
+  placeBtn.addEventListener('click', () => {
+    const gpsComp = cameraEl.components['gps-new-camera'];
+    if (!gpsComp || !gpsComp.currentCoords) {
+      placeBtn.textContent = 'No GPS coords yet…';
       return;
     }
 
-    const { latitude, longitude } = gps.currentCoords;
+    const { latitude, longitude } = gpsComp.currentCoords;
 
     const entity = document.createElement('a-entity');
     entity.setAttribute('gltf-model', '#magnemite');
@@ -120,39 +147,30 @@
       'gps-new-entity-place',
       `latitude:${latitude}; longitude:${longitude}`
     );
-
-    // set scale + slight lift
     entity.setAttribute('scale', '1 1 1');
     entity.setAttribute('position', '0 0 0');
 
-    // get camera forward vector to face user
+    // Face camera at placement time
     const forward = new THREE.Vector3();
     cameraEl.object3D.getWorldDirection(forward);
-
     const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
     entity.setAttribute('rotation', `0 ${yaw} 0`);
 
     sceneEl.appendChild(entity);
     selectedEntity = entity;
 
-    console.log('Placed Magnemite:', latitude, longitude, yaw);
+    console.log('Placed Magnemite at', latitude, longitude, 'yaw', yaw);
   });
 
-  // ------------------------------------
-  // ROTATION CONTROLS
-  // ------------------------------------
-  function rotateSelected(deltaDegrees) {
+  // --- Rotate selected ---
+  function rotateSelected(deltaDeg) {
     if (!selectedEntity) return;
-
-    const rot = selectedEntity.getAttribute('rotation') || { x:0, y:0, z:0 };
-    selectedEntity.setAttribute(
-      'rotation',
-      `0 ${rot.y + deltaDegrees} 0`
-    );
+    const rot = selectedEntity.getAttribute('rotation') || {x:0, y:0, z:0};
+    selectedEntity.setAttribute('rotation', `0 ${rot.y + deltaDeg} 0`);
   }
 
-  rotLeft.addEventListener('click',  () => rotateSelected(-15));
-  rotRight.addEventListener('click', () => rotateSelected(15));
+  rotLeftBtn.addEventListener('click',  () => rotateSelected(-15));
+  rotRightBtn.addEventListener('click', () => rotateSelected(15));
 </script>
 
 </body>
