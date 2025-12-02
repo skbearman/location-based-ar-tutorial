@@ -93,20 +93,20 @@
   </a-scene>
 
 <script>
-  const THREE      = AFRAME.THREE;
+  const THREE       = AFRAME.THREE;
 
-  const sceneEl    = document.querySelector('a-scene');
-  const cameraEl   = document.querySelector('[gps-new-camera]');
-  const gpsStatus  = document.getElementById('gps-status');
-  const placeBtn   = document.getElementById('place-btn');
-  const rotLeftBtn = document.getElementById('rot-left');
-  const rotRightBtn= document.getElementById('rot-right');
+  const sceneEl     = document.querySelector('a-scene');
+  const cameraEl    = document.querySelector('[gps-new-camera]');
+  const gpsStatus   = document.getElementById('gps-status');
+  const placeBtn    = document.getElementById('place-btn');
+  const rotLeftBtn  = document.getElementById('rot-left');
+  const rotRightBtn = document.getElementById('rot-right');
 
   let selectedEntity = null;
   let gpsReady = false;
-  let lastCoords = null;  // <-- our own copy of the latest GPS coords
+  let lastCoords = null;  // our own copy of latest GPS coords
 
-  // Event hook when AR.js updates GPS position
+  // When AR.js updates GPS position
   cameraEl.addEventListener('gps-camera-update-position', (e) => {
     const pos = e.detail.position;
     gpsReady = true;
@@ -123,13 +123,13 @@
     console.log('gps-camera-update-position', pos);
   });
 
-  // Poll gps-new-camera.currentCoords as a backup, and update lastCoords
+  // Poll gps-new-camera.currentCoords as backup + keep lastCoords in sync
   setInterval(() => {
     const gpsComp = cameraEl.components['gps-new-camera'];
     if (!gpsComp || !gpsComp.currentCoords) return;
 
     const { latitude, longitude, accuracy } = gpsComp.currentCoords;
-    lastCoords = { latitude, longitude, accuracy };  // <-- keep latest
+    lastCoords = { latitude, longitude, accuracy };
 
     gpsStatus.textContent =
       `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${accuracy || '??'}m)`;
@@ -153,11 +153,24 @@
 
     const { latitude, longitude } = lastCoords;
 
+    // DEBUG: big yellow box so you can SEE something no matter what
+    const debugBox = document.createElement('a-box');
+    debugBox.setAttribute('color', 'yellow');
+    debugBox.setAttribute('depth', '5');
+    debugBox.setAttribute('height', '5');
+    debugBox.setAttribute('width', '5');
+    debugBox.setAttribute(
+      'gps-new-entity-place',
+      `latitude: ${latitude}; longitude: ${longitude};`
+    );
+    sceneEl.appendChild(debugBox);
+
+    // Magnemite at same GPS spot
     const entity = document.createElement('a-entity');
     entity.setAttribute('gltf-model', '#magnemite');
     entity.setAttribute(
       'gps-new-entity-place',
-      `latitude:${latitude}; longitude:${longitude}`
+      `latitude: ${latitude}; longitude: ${longitude};`
     );
     entity.setAttribute('scale', '1 1 1');
     entity.setAttribute('position', '0 0 0');
