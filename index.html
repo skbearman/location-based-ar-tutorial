@@ -1,214 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>GPS AR – Magnemite + Red GPS Box</title>
+  <title>AR.js A-Frame Location-based</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 
-  <!-- AR.js GPS + A-Frame -->
+  <!-- AR.js GPS -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    #ui {
-      position: fixed;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 0.5rem;
-      z-index: 10;
-      background: rgba(0,0,0,0.3);
-      padding: 0.5rem;
-      border-radius: 16px;
-      backdrop-filter: blur(6px);
-    }
-
-    .btn {
-      padding: 0.5rem 0.9rem;
-      border-radius: 999px;
-      border: none;
-      font-size: 0.85rem;
-      font-weight: 600;
-      background: #111;
-      color: white;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    }
-
-    .btn:disabled {
-      background: #555;
-      opacity: 0.6;
-    }
-
-    #gps-status {
-      position: fixed;
-      top: 0.5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      background: rgba(0,0,0,0.5);
-      color: #fff;
-      font-size: 0.75rem;
-      z-index: 10;
-    }
-  </style>
 </head>
 
-<body>
+<body style="margin:0; overflow:hidden;">
 
-  <!-- GPS debug text -->
-  <div id="gps-status">GPS: waiting…</div>
+<a-scene
+  embedded
+  vr-mode-ui="enabled:false"
+  renderer="antialias:true; alpha:true"
+  arjs="sourceType:webcam; videoTexture:true; debugUIEnabled:true">
 
-  <!-- UI -->
-  <div id="ui">
-    <button id="place-btn" class="btn" disabled>Getting GPS…</button>
-    <button id="rot-left"  class="btn">⟲ Rotate</button>
-    <button id="rot-right" class="btn">⟳ Rotate</button>
-  </div>
+  <!-- GPS camera -->
+  <a-camera gps-new-camera="gpsMinDistance:5"></a-camera>
 
-  <!-- AR Scene -->
-  <a-scene
-    embedded
-    vr-mode-ui="enabled:false"
-    renderer="antialias:true; alpha:true"
-    arjs="sourceType:webcam; videoTexture:true; debugUIEnabled:true">
+  <!-- RED GPS TEST BOX -->
+  <a-box
+    color="red"
+    depth="10"
+    height="10"
+    width="10"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721">
+  </a-box>
 
-    <!-- Model preload -->
-    <a-assets>
-      <a-asset-item id="magnemite" src="assets/magnemite/scene.gltf"></a-asset-item>
-    </a-assets>
+  <!-- MAGNEMITE AT SAME LOCATION -->
+  <a-entity
+    gltf-model="assets/magnemite/scene.gltf"
+    rotation="0 180 0"
+    scale="0.6 0.6 0.6"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721;"
+    animation-mixer>
+  </a-entity>
 
-    <!-- GPS camera -->
-    <a-camera gps-new-camera="gpsMinDistance:1"></a-camera>
-
-    <!-- Red box that will follow current GPS position -->
-    <a-box
-      id="gps-box"
-      color="red"
-      depth="4"
-      height="4"
-      width="4"
-      position="0 0 0">
-    </a-box>
-
-  </a-scene>
-
-<script>
-  const THREE       = AFRAME.THREE;
-
-  const sceneEl     = document.querySelector('a-scene');
-  const cameraEl    = document.querySelector('[gps-new-camera]');
-  const gpsStatus   = document.getElementById('gps-status');
-  const placeBtn    = document.getElementById('place-btn');
-  const rotLeftBtn  = document.getElementById('rot-left');
-  const rotRightBtn = document.getElementById('rot-right');
-  const gpsBox      = document.getElementById('gps-box');
-
-  let selectedEntity = null;
-  let gpsReady = false;
-  let lastCoords = null;  // our own copy of latest GPS coords
-
-  // When AR.js updates GPS position
-  cameraEl.addEventListener('gps-camera-update-position', (e) => {
-    const pos = e.detail.position;
-    gpsReady = true;
-    lastCoords = {
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      accuracy: pos.accuracy
-    };
-
-    // Update UI
-    placeBtn.disabled = false;
-    placeBtn.textContent = 'Place Magnemite Here';
-    gpsStatus.textContent =
-      `GPS: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`;
-
-    // Move red box to current GPS position
-    gpsBox.setAttribute(
-      'gps-new-entity-place',
-      `latitude: ${pos.latitude}; longitude: ${pos.longitude};`
-    );
-
-    console.log('gps-camera-update-position', pos);
-  });
-
-  // Poll gps-new-camera.currentCoords as backup + keep lastCoords in sync
-  setInterval(() => {
-    const gpsComp = cameraEl.components['gps-new-camera'];
-    if (!gpsComp || !gpsComp.currentCoords) return;
-
-    const { latitude, longitude, accuracy } = gpsComp.currentCoords;
-    lastCoords = { latitude, longitude, accuracy };
-
-    gpsStatus.textContent =
-      `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${accuracy || '??'}m)`;
-
-    if (!gpsReady) {
-      gpsReady = true;
-      placeBtn.disabled = false;
-      placeBtn.textContent = 'Place Magnemite Here';
-    }
-
-    // Continuously keep the red box at your current GPS location
-    gpsBox.setAttribute(
-      'gps-new-entity-place',
-      `latitude: ${latitude}; longitude: ${longitude};`
-    );
-  }, 1000);
-
-  // Place Magnemite at last known GPS coords
-  placeBtn.addEventListener('click', () => {
-    if (!lastCoords) {
-      placeBtn.textContent = 'No GPS coords yet…';
-      setTimeout(() => {
-        placeBtn.textContent = gpsReady ? 'Place Magnemite Here' : 'Getting GPS…';
-      }, 1500);
-      return;
-    }
-
-    const { latitude, longitude } = lastCoords;
-
-    const entity = document.createElement('a-entity');
-    entity.setAttribute('gltf-model', '#magnemite');
-    entity.setAttribute(
-      'gps-new-entity-place',
-      `latitude: ${latitude}; longitude: ${longitude};`
-    );
-    entity.setAttribute('scale', '1 1 1');
-    entity.setAttribute('position', '0 0 0');
-
-    // Face camera at placement time
-    const forward = new THREE.Vector3();
-    cameraEl.object3D.getWorldDirection(forward);
-    const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-    entity.setAttribute('rotation', `0 ${yaw} 0`);
-
-    sceneEl.appendChild(entity);
-    selectedEntity = entity;
-
-    console.log('Placed Magnemite at', latitude, longitude, 'yaw', yaw);
-  });
-
-  // Rotate last placed Magnemite
-  function rotateSelected(deltaDeg) {
-    if (!selectedEntity) return;
-    const rot = selectedEntity.getAttribute('rotation') || {x:0, y:0, z:0};
-    selectedEntity.setAttribute('rotation', `0 ${rot.y + deltaDeg} 0`);
-  }
-
-  rotLeftBtn.addEventListener('click',  () => rotateSelected(-15));
-  rotRightBtn.addEventListener('click', () => rotateSelected(15));
-</script>
+</a-scene>
 
 </body>
 </html>
