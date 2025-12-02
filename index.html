@@ -26,21 +26,24 @@
     <!-- GPS camera -->
     <a-camera gps-new-camera="gpsMinDistance: 1"></a-camera>
 
-    <!-- Red GPS box at your coordinates -->
+    <!-- Red GPS box at your coordinates, smaller and pushed forward -->
     <a-box
-      color="red"
-      depth="10" height="10" width="10"
-      gps-new-entity-place="latitude: 33.45679; longitude: -111.77721">
+    color="red"
+    depth="2" height="2" width="2"
+    position="0 0 -20"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721">
     </a-box>
 
-    <!-- Magnemite at the SAME GPS location -->
+    <!-- Magnemite at the SAME GPS location, smaller + forward -->
     <a-entity
-      gltf-model="assets/magnemite/scene.gltf"
-      rotation="0 180 0"
-      scale="1 1 1"
-      gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
-      animation-mixer>
+    gltf-model="assets/magnemite/scene.gltf"
+    rotation="0 180 0"
+    scale="0.2 0.2 0.2"
+    position="0 0 -20"
+    gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
+    animation-mixer>
     </a-entity>
+
 
   </a-scene>
 
