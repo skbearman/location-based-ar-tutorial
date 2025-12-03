@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>GPS Offset 1m</title>
+<title>Bench – 3m GPS Offset + Debug</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -91,6 +91,21 @@ body {
   font-weight: 600;
   font-size: 0.95rem;
 }
+
+/* DEBUG OVERLAY */
+#debug {
+  position: fixed;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  color: #0f0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  max-width: 60vw;
+  white-space: pre-line;
+}
 </style>
 </head>
 
@@ -128,6 +143,8 @@ body {
   </div>
 </div>
 
+<div id="debug">GPS: waiting…</div>
+
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
@@ -135,19 +152,19 @@ body {
  renderer="antialias:true; alpha:true">
 
   <!-- GPS camera -->
-  <a-camera gps-new-camera="gpsMinDistance:3; positionMinAccuracy:50"></a-camera>
+  <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
 
 </a-scene>
 
 <script>
-
-const THREE = AFRAME.THREE;
+const THREE      = AFRAME.THREE;
 
 const scene      = document.querySelector('a-scene');
 const camera     = document.querySelector('[gps-new-camera]');
 const placeBtn   = document.getElementById('place-btn');
 const toolbar    = document.getElementById('transform-ui');
 const lockBtn    = document.getElementById('lock-btn');
+const debugEl    = document.getElementById('debug');
 
 const moveUp     = document.getElementById('move-up');
 const moveDown   = document.getElementById('move-down');
@@ -160,8 +177,49 @@ const heightDown = document.getElementById('height-down');
 const rotLeft    = document.getElementById('rot-left');
 const rotRight   = document.getElementById('rot-right');
 
-let lastCoords  = null;
-let activeBench = null;
+let lastCoords   = null;
+let activeBench  = null;
+let benchCoords  = null;
+
+/* Haversine distance in meters */
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6378137;
+  const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
+  const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(THREE.MathUtils.degToRad(lat1)) *
+    Math.cos(THREE.MathUtils.degToRad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/* Update debug overlay */
+function updateDebug(){
+  let text = '';
+  if (!lastCoords){
+    text = 'GPS: waiting…';
+  } else {
+    text = `You:
+lat ${lastCoords.latitude.toFixed(6)}
+lon ${lastCoords.longitude.toFixed(6)}`;
+    if (benchCoords){
+      const d = haversine(
+        lastCoords.latitude, lastCoords.longitude,
+        benchCoords.latitude, benchCoords.longitude
+      );
+      text += `
+
+Bench:
+lat ${benchCoords.latitude.toFixed(6)}
+lon ${benchCoords.longitude.toFixed(6)}
+dist ~ ${d.toFixed(1)} m`;
+    }
+  }
+  debugEl.textContent = text;
+}
 
 /* GPS READY */
 camera.addEventListener('gps-camera-update-position', e => {
@@ -174,26 +232,26 @@ camera.addEventListener('gps-camera-update-position', e => {
   };
 
   placeBtn.disabled = false;
-  placeBtn.textContent = "Place Bench Here";
+  placeBtn.textContent = "Place Bench Ahead";
+  updateDebug();
 });
 
-
-/* PLACE BENCH – with GPS offset in front of camera */
+/* PLACE BENCH WITH 3m GPS OFFSET */
 placeBtn.onclick = () => {
   if (!lastCoords) return;
 
-  // 1) Camera facing direction (world space)
+  // Camera forward direction
   const forward = new THREE.Vector3();
   camera.object3D.getWorldDirection(forward);
   forward.y = 0;
   forward.normalize();
 
-  // 2) Bearing (radians) based on forward vector
-  const bearingRad = Math.atan2(forward.x, forward.z); // z forward in A-Frame
+  // Bearing in radians
+  const bearingRad = Math.atan2(forward.x, forward.z);
 
-  // 3) Offset some meters ahead using spherical Earth approximation
-  const distance = 1;      // meters in front of user
-  const R = 6378137;        // Earth radius in meters
+  // Offset 3 m ahead
+  const distance = 3;
+  const R = 6378137;
 
   const lat1 = THREE.MathUtils.degToRad(lastCoords.latitude);
   const lon1 = THREE.MathUtils.degToRad(lastCoords.longitude);
@@ -212,19 +270,18 @@ placeBtn.onclick = () => {
   const benchLat = THREE.MathUtils.radToDeg(lat2);
   const benchLon = THREE.MathUtils.radToDeg(lon2);
 
-  // 4) Create bench at the offset GPS coordinate
-  const bench = document.createElement('a-entity');
+  benchCoords = { latitude: benchLat, longitude: benchLon };
+  updateDebug();
 
+  const bench = document.createElement('a-entity');
   bench.setAttribute('gltf-model','assets/park_bench.glb');
   bench.setAttribute(
     'gps-new-entity-place',
     `latitude:${benchLat}; longitude:${benchLon}`
   );
-
   bench.setAttribute('scale','1 1 1');
   bench.setAttribute('position','0 0 0');
 
-  // Orient bench to face along the same bearing
   const yawDeg = THREE.MathUtils.radToDeg(bearingRad);
   bench.setAttribute('rotation', `0 ${yawDeg} 0`);
 
@@ -234,29 +291,18 @@ placeBtn.onclick = () => {
   toolbar.style.display = "block";
 };
 
-
 /* HELPERS */
-function getPos(){
-  return activeBench?.getAttribute('position');
-}
-function getRot(){
-  return activeBench?.getAttribute('rotation');
-}
+function getPos(){ return activeBench?.getAttribute('position'); }
+function getRot(){ return activeBench?.getAttribute('rotation'); }
 
-function setPos(p){
-  activeBench?.setAttribute('position', p);
-}
-function setRot(r){
-  activeBench?.setAttribute('rotation', r);
-}
-
+function setPos(p){ activeBench?.setAttribute('position', p); }
+function setRot(r){ activeBench?.setAttribute('rotation', r); }
 
 const MOVE_STEP   = 5;
 const HEIGHT_STEP = 5;
 const ROT_STEP    = 15;
 
-
-/* RELATIVE MOVE (local X/Z around its GPS anchor) */
+/* RELATIVE MOVE */
 function move(fwd, side){
   if (!activeBench) return;
 
@@ -274,7 +320,6 @@ function move(fwd, side){
 
   setPos(p);
 }
-
 
 /* BUTTON EVENTS */
 moveUp.onclick    = ()=>move( 1,  0);
@@ -315,7 +360,6 @@ lockBtn.onclick = ()=>{
   activeBench = null;
   toolbar.style.display = "none";
 };
-
 </script>
 
 </body>
