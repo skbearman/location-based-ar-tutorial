@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bench – Scale</title>
+<title>Scale Test2</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -246,7 +246,7 @@ function updateBenchScale(){
   const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
 
   // Lerp between 1.0 (near) and 0.2 (far)
-  const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
+  const scaleVal = THREE.MathUtils.lerp(1.5, 0.05, t);
 
   // A-Frame attribute
   activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
