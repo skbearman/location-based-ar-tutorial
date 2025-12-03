@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AR.js GPS + Place & Adjust Magnemite</title>
+  <title>AR.js GPS + Place & Adjust Bench</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -104,7 +104,7 @@
 
   <!-- Transform controls overlay -->
   <div id="transform-ui">
-    <h4>Adjust Magnemite</h4>
+    <h4>Adjust Bench</h4>
 
     <!-- Move controls -->
     <div class="row">
@@ -155,177 +155,178 @@
     </a-box>
 
     <a-entity
-      id="static-magnemite"
-      gltf-model="assets/magnemite/scene.gltf"
-      rotation="0 180 0"
-      scale="0.2 0.2 0.2"
+      id="static-bench"
+      gltf-model="assets/park_bench.glb"
+      rotation="0 0 0"
+      scale="1 1 1"
       gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
-      position="0 0 0"
-      animation-mixer>
+      position="0 0 0">
     </a-entity>
+
 
   </a-scene>
 
-  <script>
-    const THREE       = AFRAME.THREE;
-    const sceneEl     = document.querySelector('a-scene');
-    const cameraEl    = document.querySelector('[gps-new-camera]');
-    const placeBtn    = document.getElementById('place-btn');
-    const transformUI = document.getElementById('transform-ui');
-    const lockBtn     = document.getElementById('lock-btn');
+ <script>
+  const THREE       = AFRAME.THREE;
+  const sceneEl     = document.querySelector('a-scene');
+  const cameraEl    = document.querySelector('[gps-new-camera]');
+  const placeBtn    = document.getElementById('place-btn');
+  const transformUI = document.getElementById('transform-ui');
+  const lockBtn     = document.getElementById('lock-btn');
 
-    let lastCoords = null;
-    let activeMagnemite = null; // last placed magnemite that we’re editing
+  let lastCoords = null;
+  let activeBench = null; // last placed bench that we're editing
 
-    // When GPS updates, remember coords and enable the button
-    cameraEl.addEventListener('gps-camera-update-position', (e) => {
-      const pos = e.detail.position;
-      lastCoords = {
-        latitude: pos.latitude,
-        longitude: pos.longitude
-      };
+  // When GPS updates, remember coords and enable the button
+  cameraEl.addEventListener('gps-camera-update-position', (e) => {
+    const pos = e.detail.position;
+    lastCoords = {
+      latitude: pos.latitude,
+      longitude: pos.longitude
+    };
 
-      placeBtn.disabled = false;
-      placeBtn.textContent = 'Place Magnemite Here';
-      console.log('GPS update:', lastCoords);
-    });
+    placeBtn.disabled = false;
+    placeBtn.textContent = 'Place Bench Here';
+    console.log('GPS update:', lastCoords);
+  });
 
-    // On click, place a new Magnemite at the current GPS position
-    placeBtn.addEventListener('click', () => {
-      if (!lastCoords) {
-        placeBtn.textContent = 'Still getting GPS…';
-        setTimeout(() => {
-          placeBtn.textContent = 'Place Magnemite Here';
-        }, 1500);
-        return;
-      }
-
-      const { latitude, longitude } = lastCoords;
-
-      const entity = document.createElement('a-entity');
-      entity.setAttribute('gltf-model', 'assets/magnemite/scene.gltf');
-      entity.setAttribute(
-        'gps-new-entity-place',
-        `latitude: ${latitude}; longitude: ${longitude}`
-      );
-      entity.setAttribute('scale', '0.2 0.2 0.2');
-
-      // Start with no local X/Z offset; Y = 0 (on ground)
-      entity.setAttribute('position', '0 0 0');
-
-      // Make it face the direction you're looking when you place it
-      const forward = new THREE.Vector3();
-      cameraEl.object3D.getWorldDirection(forward);
-      const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-      entity.setAttribute('rotation', `0 ${yaw} 0`);
-
-      sceneEl.appendChild(entity);
-
-      // Set this as the active Magnemite for editing
-      activeMagnemite = entity;
-      transformUI.style.display = 'block';
-
-      console.log('Placed Magnemite at', latitude, longitude, 'yaw', yaw);
-    });
-
-    // --- Transform controls for activeMagnemite ---
-
-    function getPos() {
-      if (!activeMagnemite) return null;
-      return Object.assign({}, activeMagnemite.getAttribute('position'));
+  // On click, place a new Bench at the current GPS position
+  placeBtn.addEventListener('click', () => {
+    if (!lastCoords) {
+      placeBtn.textContent = 'Still getting GPS…';
+      setTimeout(() => {
+        placeBtn.textContent = 'Place Bench Here';
+      }, 1500);
+      return;
     }
 
-    function setPos(pos) {
-      if (!activeMagnemite) return;
-      activeMagnemite.setAttribute('position', pos);
-    }
+    const { latitude, longitude } = lastCoords;
 
-    function getRot() {
-      if (!activeMagnemite) return null;
-      return Object.assign({}, activeMagnemite.getAttribute('rotation'));
-    }
+    const entity = document.createElement('a-entity');
+    entity.setAttribute('gltf-model', 'assets/park_bench.glb');
+    entity.setAttribute(
+      'gps-new-entity-place',
+      `latitude: ${latitude}; longitude: ${longitude}`
+    );
+    entity.setAttribute('scale', '1 1 1');
 
-    function setRot(rot) {
-      if (!activeMagnemite) return;
-      activeMagnemite.setAttribute('rotation', rot);
-    }
+    // Start with no local X/Z offset; Y = 0 (on ground)
+    entity.setAttribute('position', '0 0 0');
 
-    const MOVE_STEP   = 1.0;
-    const HEIGHT_STEP = 0.5;
-    const ROT_STEP    = 15; // degrees
+    // Make it face the direction you're looking when you place it
+    const forward = new THREE.Vector3();
+    cameraEl.object3D.getWorldDirection(forward);
+    const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
+    entity.setAttribute('rotation', `0 ${yaw} 0`);
 
-    function moveRelative(forwardSign, rightSign) {
-      if (!activeMagnemite) return;
+    sceneEl.appendChild(entity);
 
-      const pos = getPos();
-      if (!pos) return;
+    // Set this as the active bench for editing
+    activeBench = entity;
+    transformUI.style.display = 'block';
 
-      const forward = new THREE.Vector3();
-      cameraEl.object3D.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
+    console.log('Placed bench at', latitude, longitude, 'yaw', yaw);
+  });
 
-      const right = new THREE.Vector3(forward.z, 0, -forward.x);
+  // --- Transform controls for activeBench ---
 
-      const dx = (forward.x * forwardSign + right.x * rightSign) * MOVE_STEP;
-      const dz = (forward.z * forwardSign + right.z * rightSign) * MOVE_STEP;
+  function getPos() {
+    if (!activeBench) return null;
+    return Object.assign({}, activeBench.getAttribute('position'));
+  }
 
-      pos.x += dx;
-      pos.z += dz;
+  function setPos(pos) {
+    if (!activeBench) return;
+    activeBench.setAttribute('position', pos);
+  }
 
-      setPos(pos);
-    }
+  function getRot() {
+    if (!activeBench) return null;
+    return Object.assign({}, activeBench.getAttribute('rotation'));
+  }
 
-    document.getElementById('move-up').addEventListener('click', () => {
-      moveRelative(1, 0); // forward
-    });
+  function setRot(rot) {
+    if (!activeBench) return;
+    activeBench.setAttribute('rotation', rot);
+  }
 
-    document.getElementById('move-down').addEventListener('click', () => {
-      moveRelative(-1, 0); // backward
-    });
+  const MOVE_STEP   = 1.0;
+  const HEIGHT_STEP = 0.5;
+  const ROT_STEP    = 15; // degrees
 
-    document.getElementById('move-left').addEventListener('click', () => {
-      moveRelative(0, -1); // left
-    });
+  function moveRelative(forwardSign, rightSign) {
+    if (!activeBench) return;
 
-    document.getElementById('move-right').addEventListener('click', () => {
-      moveRelative(0, 1); // right
-    });
+    const pos = getPos();
+    if (!pos) return;
 
-    document.getElementById('height-up').addEventListener('click', () => {
-      if (!activeMagnemite) return;
-      const pos = getPos();
-      pos.y += HEIGHT_STEP;
-      setPos(pos);
-    });
+    const forward = new THREE.Vector3();
+    cameraEl.object3D.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
 
-    document.getElementById('height-down').addEventListener('click', () => {
-      if (!activeMagnemite) return;
-      const pos = getPos();
-      pos.y -= HEIGHT_STEP;
-      setPos(pos);
-    });
+    const right = new THREE.Vector3(forward.z, 0, -forward.x);
 
-    document.getElementById('rot-left').addEventListener('click', () => {
-      if (!activeMagnemite) return;
-      const rot = getRot();
-      rot.y -= ROT_STEP;
-      setRot(rot);
-    });
+    const dx = (forward.x * forwardSign + right.x * rightSign) * MOVE_STEP;
+    const dz = (forward.z * forwardSign + right.z * rightSign) * MOVE_STEP;
 
-    document.getElementById('rot-right').addEventListener('click', () => {
-      if (!activeMagnemite) return;
-      const rot = getRot();
-      rot.y += ROT_STEP;
-      setRot(rot);
-    });
+    pos.x += dx;
+    pos.z += dz;
 
-    // Lock button: hide toolbar and stop editing this Magnemite
-    lockBtn.addEventListener('click', () => {
-      activeMagnemite = null;
-      transformUI.style.display = 'none';
-    });
-  </script>
+    setPos(pos);
+  }
+
+  document.getElementById('move-up').addEventListener('click', () => {
+    moveRelative(1, 0); // forward
+  });
+
+  document.getElementById('move-down').addEventListener('click', () => {
+    moveRelative(-1, 0); // backward
+  });
+
+  document.getElementById('move-left').addEventListener('click', () => {
+    moveRelative(0, -1); // left
+  });
+
+  document.getElementById('move-right').addEventListener('click', () => {
+    moveRelative(0, 1); // right
+  });
+
+  document.getElementById('height-up').addEventListener('click', () => {
+    if (!activeBench) return;
+    const pos = getPos();
+    pos.y += HEIGHT_STEP;
+    setPos(pos);
+  });
+
+  document.getElementById('height-down').addEventListener('click', () => {
+    if (!activeBench) return;
+    const pos = getPos();
+    pos.y -= HEIGHT_STEP;
+    setPos(pos);
+  });
+
+  document.getElementById('rot-left').addEventListener('click', () => {
+    if (!activeBench) return;
+    const rot = getRot();
+    rot.y -= ROT_STEP;
+    setRot(rot);
+  });
+
+  document.getElementById('rot-right').addEventListener('click', () => {
+    if (!activeBench) return;
+    const rot = getRot();
+    rot.y += ROT_STEP;
+    setRot(rot);
+  });
+
+  // Lock button: hide toolbar and stop editing this bench
+  lockBtn.addEventListener('click', () => {
+    activeBench = null;
+    transformUI.style.display = 'none';
+  });
+</script>
+
 
 </body>
 </html>
