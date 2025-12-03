@@ -189,8 +189,8 @@
     placeBtn.textContent = 'Place Bench Here';
     console.log('GPS update:', lastCoords);
   });
-
-  // On click, place a new Bench at the current GPS position
+  
+  // On click, place a new Bench a few meters in front of the current GPS position
   placeBtn.addEventListener('click', () => {
     if (!lastCoords) {
       placeBtn.textContent = 'Still getting GPS…';
@@ -202,20 +202,50 @@
 
     const { latitude, longitude } = lastCoords;
 
+    // 1) Get the camera's facing direction
+    const forward = new THREE.Vector3();
+    cameraEl.object3D.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+
+    // 2) Turn that into a bearing (0–2π) for the globe math
+    const bearingRad = Math.atan2(forward.x, forward.z); // approx
+
+    // 3) Compute a new lat/lon some meters in front of the user
+    const distance = 10; // meters in front of you
+    const R = 6378137;   // Earth radius in meters
+
+    const lat1 = THREE.MathUtils.degToRad(latitude);
+    const lon1 = THREE.MathUtils.degToRad(longitude);
+
+    const angDist = distance / R;
+
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angDist) +
+      Math.cos(lat1) * Math.sin(angDist) * Math.cos(bearingRad)
+    );
+
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(bearingRad) * Math.sin(angDist) * Math.cos(lat1),
+      Math.cos(angDist) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+    const benchLat = THREE.MathUtils.radToDeg(lat2);
+    const benchLon = THREE.MathUtils.radToDeg(lon2);
+
+    // 4) Create the bench at that offset location
     const entity = document.createElement('a-entity');
     entity.setAttribute('gltf-model', 'assets/park_bench.glb');
     entity.setAttribute(
       'gps-new-entity-place',
-      `latitude: ${latitude}; longitude: ${longitude}`
+      `latitude: ${benchLat}; longitude: ${benchLon}`
     );
     entity.setAttribute('scale', '1 1 1');
 
-    // Start with no local X/Z offset; Y = 0 (on ground)
+    // Only Y is meaningful for gps-new-entity-place; X/Z should stay 0
     entity.setAttribute('position', '0 0 0');
 
     // Make it face the direction you're looking when you place it
-    const forward = new THREE.Vector3();
-    cameraEl.object3D.getWorldDirection(forward);
     const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
     entity.setAttribute('rotation', `0 ${yaw} 0`);
 
@@ -225,106 +255,9 @@
     activeBench = entity;
     transformUI.style.display = 'block';
 
-    console.log('Placed bench at', latitude, longitude, 'yaw', yaw);
+    console.log('Placed bench at', benchLat, benchLon, 'yaw', yaw);
   });
 
-  // --- Transform controls for activeBench ---
-
-  function getPos() {
-    if (!activeBench) return null;
-    return Object.assign({}, activeBench.getAttribute('position'));
-  }
-
-  function setPos(pos) {
-    if (!activeBench) return;
-    activeBench.setAttribute('position', pos);
-  }
-
-  function getRot() {
-    if (!activeBench) return null;
-    return Object.assign({}, activeBench.getAttribute('rotation'));
-  }
-
-  function setRot(rot) {
-    if (!activeBench) return;
-    activeBench.setAttribute('rotation', rot);
-  }
-
-  const MOVE_STEP   = 10.0;
-  const HEIGHT_STEP = 2.5;
-  const ROT_STEP    = 15; // degrees
-
-  function moveRelative(forwardSign, rightSign) {
-    if (!activeBench) return;
-
-    const pos = getPos();
-    if (!pos) return;
-
-    const forward = new THREE.Vector3();
-    cameraEl.object3D.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-
-    const right = new THREE.Vector3(forward.z, 0, -forward.x);
-
-    const dx = (forward.x * forwardSign + right.x * rightSign) * MOVE_STEP;
-    const dz = (forward.z * forwardSign + right.z * rightSign) * MOVE_STEP;
-
-    pos.x += dx;
-    pos.z += dz;
-
-    setPos(pos);
-  }
-
-  document.getElementById('move-up').addEventListener('click', () => {
-    moveRelative(1, 0); // forward
-  });
-
-  document.getElementById('move-down').addEventListener('click', () => {
-    moveRelative(-1, 0); // backward
-  });
-
-  document.getElementById('move-left').addEventListener('click', () => {
-    moveRelative(0, -1); // left
-  });
-
-  document.getElementById('move-right').addEventListener('click', () => {
-    moveRelative(0, 1); // right
-  });
-
-  document.getElementById('height-up').addEventListener('click', () => {
-    if (!activeBench) return;
-    const pos = getPos();
-    pos.y += HEIGHT_STEP;
-    setPos(pos);
-  });
-
-  document.getElementById('height-down').addEventListener('click', () => {
-    if (!activeBench) return;
-    const pos = getPos();
-    pos.y -= HEIGHT_STEP;
-    setPos(pos);
-  });
-
-  document.getElementById('rot-left').addEventListener('click', () => {
-    if (!activeBench) return;
-    const rot = getRot();
-    rot.y -= ROT_STEP;
-    setRot(rot);
-  });
-
-  document.getElementById('rot-right').addEventListener('click', () => {
-    if (!activeBench) return;
-    const rot = getRot();
-    rot.y += ROT_STEP;
-    setRot(rot);
-  });
-
-  // Lock button: hide toolbar and stop editing this bench
-  lockBtn.addEventListener('click', () => {
-    activeBench = null;
-    transformUI.style.display = 'none';
-  });
 </script>
 
 
