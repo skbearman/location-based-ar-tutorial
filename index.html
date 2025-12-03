@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bench – 3m GPS Offset + Debug + Scale</title>
+<title>Bench – Scale</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -216,6 +216,14 @@ Bench:
 lat ${benchCoords.latitude.toFixed(6)}
 lon ${benchCoords.longitude.toFixed(6)}
 dist ~ ${d.toFixed(1)} m`;
+
+      if (activeBench) {
+        const s = activeBench.getAttribute('scale');
+        if (s && typeof s.x === 'number') {
+          text += `
+scale ~ ${s.x.toFixed(2)}`;
+        }
+      }
     }
   }
   debugEl.textContent = text;
@@ -240,12 +248,21 @@ function updateBenchScale(){
   // Lerp between 1.0 (near) and 0.2 (far)
   const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
 
+  // A-Frame attribute
   activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
+
+  // Force on underlying three.js object as well
+  if (activeBench.object3D) {
+    activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
+  }
+
+  // Update debug to reflect new scale
+  updateDebug();
 }
 
-/* GPS READY */
-camera.addEventListener('gps-camera-update-position', e => {
-  const pos = e.detail.position;
+/* GPS READY - listen on window (AR.js dispatches here) */
+window.addEventListener('gps-camera-update-position', e => {
+  const pos = e.detail && e.detail.position;
   if (!pos) return;
 
   lastCoords = {
@@ -255,6 +272,7 @@ camera.addEventListener('gps-camera-update-position', e => {
 
   placeBtn.disabled = false;
   placeBtn.textContent = "Place Bench Ahead";
+
   updateDebug();
   updateBenchScale();
 });
