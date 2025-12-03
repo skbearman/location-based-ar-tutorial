@@ -2,9 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Magnemite WebXR AR (Minimal)</title>
+    <title>Magnemite WebXR AR 4 (with button)</title>
 
-    <!-- A-Frame (1.7.0 has ar-hit-test built in) -->
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 
     <style>
@@ -28,15 +28,32 @@
         max-width: 90vw;
         z-index: 5;
       }
+
+      #enter-ar-btn {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.6rem 1.2rem;
+        border-radius: 999px;
+        background: #111;
+        color: #fff;
+        border: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        z-index: 5;
+      }
     </style>
   </head>
 
   <body>
     <div id="instructions">
-      1) Tap the AR button ▶ 2) Move phone to scan surfaces ▶ 3) Tap the CAMERA VIEW to place Magnemite
+      1) Tap "Enter AR" ▶ 2) Move phone to scan ▶ 3) Tap the CAMERA VIEW to place Magnemite
     </div>
 
-    <!-- A-Frame scene: use official ar-hit-test pattern -->
+    <button id="enter-ar-btn">Enter AR</button>
+
+    <!-- A-Frame scene: WebXR + ar-hit-test -->
     <a-scene
       webxr="optionalFeatures: hit-test;"
       ar-hit-test="target: #magnemite">
@@ -45,7 +62,7 @@
       <a-entity light="type: directional; intensity: 1" position="1 2 1"></a-entity>
       <a-entity light="type: ambient; intensity: 0.5"></a-entity>
 
-      <!-- Target object: ar-hit-test will move this + make it visible -->
+      <!-- Magnemite that will be placed by ar-hit-test -->
       <a-entity
         id="magnemite"
         gltf-model="assets/magnemite/scene.gltf"
@@ -56,5 +73,31 @@
       <!-- Camera -->
       <a-entity camera look-controls></a-entity>
     </a-scene>
+
+    <script>
+      const sceneEl = document.querySelector('a-scene');
+      const enterBtn = document.getElementById('enter-ar-btn');
+      const instructions = document.getElementById('instructions');
+
+      // Explicitly start the WebXR session when the button is pressed
+      enterBtn.addEventListener('click', () => {
+        // A-Frame will request an immersive session (AR in XRViewer)
+        sceneEl.enterVR();
+      });
+
+      // Optional: update text when AR actually starts
+      sceneEl.addEventListener('enter-vr', () => {
+        if (sceneEl.is('ar-mode')) {
+          instructions.textContent = 'Move the phone to find a surface, then TAP THE CAMERA VIEW to place Magnemite';
+        } else {
+          instructions.textContent = 'XR session started (might be VR, not AR)';
+        }
+      });
+
+      // Optional: listen for ar-hit-test select (when you tap the camera view)
+      sceneEl.addEventListener('ar-hit-test-select', () => {
+        instructions.textContent = 'Magnemite placed! Walk around it.';
+      });
+    </script>
   </body>
 </html>
