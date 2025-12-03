@@ -1,42 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Magnemite WebXR AR</title>
 
-    <!-- A-Frame with WebXR & ar-hit-test support -->
-    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 
     <style>
-      body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-      #overlay {
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        overflow: hidden;
+      }
+
+      /* Simple fixed label at the top */
+      #instructions {
         position: fixed;
-        bottom: 1rem;
+        top: 0.5rem;
         left: 50%;
         transform: translateX(-50%);
         padding: 0.4rem 0.8rem;
         border-radius: 999px;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.6);
         color: #fff;
-        font-size: 0.8rem;
-        z-index: 10;
+        font-size: 0.75rem;
+        z-index: 5;
+        max-width: 90vw;
+        text-align: center;
+      }
+
+      /* Custom AR button (for A-Frame’s xr-mode-ui) */
+      #enter-ar-btn {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        background: #111;
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border: none;
+        z-index: 5;
       }
     </style>
   </head>
 
   <body>
-    <!-- A-Frame WebXR AR scene (NO AR.js here) -->
+    <!-- Text that stays on top in 2D mode -->
+    <div id="instructions">
+      1) Tap “Enter AR” → 2) Move phone to scan → 3) Tap camera view to place Magnemite
+    </div>
+
+    <!-- Custom AR button wired to A-Frame -->
+    <button id="enter-ar-btn">Enter AR</button>
+
+    <!-- A-Frame scene: NO AR.js, just WebXR -->
     <a-scene
       renderer="colorManagement: true; physicallyCorrectLights: true"
-      vr-mode-ui="enabled: true"
-      webxr="optionalFeatures: hit-test, dom-overlay; overlayElement: #overlay"
+      xr-mode-ui="enabled: true; enterARButton: #enter-ar-btn; enterAREnabled: true; enterVREnabled: false; XRMode: ar"
+      webxr="optionalFeatures: hit-test"
       ar-hit-test="target: #magnemite">
 
-      <!-- Simple light so the model isn’t dark -->
+      <!-- Lights -->
       <a-entity light="type: directional; intensity: 1" position="1 2 1"></a-entity>
       <a-entity light="type: ambient; intensity: 0.5"></a-entity>
 
-      <!-- This entity will be placed on the detected surface -->
+      <!-- This is what gets moved & shown by ar-hit-test -->
       <a-entity
         id="magnemite"
         gltf-model="assets/magnemite/scene.gltf"
@@ -48,26 +80,37 @@
       <a-entity camera look-controls></a-entity>
     </a-scene>
 
-    <!-- UI overlay (shown on top in AR) -->
-    <div id="overlay">
-      Move phone to find a surface, then tap to place Magnemite.
-    </div>
-
     <script>
-      // Optional: messages when AR hit-test kicks in
       const sceneEl = document.querySelector('a-scene');
-      const overlay = document.getElementById('overlay');
+      const instructions = document.getElementById('instructions');
 
       sceneEl.addEventListener('enter-vr', function () {
         if (this.is('ar-mode')) {
-          overlay.textContent = 'Scanning… move your phone around.';
-          this.addEventListener('ar-hit-test-achieved', function () {
-            overlay.textContent = 'Tap where you want Magnemite.';
-          }, { once: true });
+          instructions.textContent = 'Move phone to find a surface, then TAP THE CAMERA VIEW to place Magnemite';
 
-          this.addEventListener('ar-hit-test-select', function () {
-            overlay.textContent = 'Magnemite placed! Walk around it.';
-          }, { once: true });
+          this.addEventListener(
+            'ar-hit-test-start',
+            function () {
+              instructions.textContent = 'Scanning… move your phone slowly';
+            },
+            { once: true }
+          );
+
+          this.addEventListener(
+            'ar-hit-test-achieved',
+            function () {
+              instructions.textContent = 'Tap the camera view to place Magnemite';
+            },
+            { once: true }
+          );
+
+          this.addEventListener(
+            'ar-hit-test-select',
+            function () {
+              instructions.textContent = 'Magnemite placed! Walk around it.';
+            },
+            { once: true }
+          );
         }
       });
     </script>
