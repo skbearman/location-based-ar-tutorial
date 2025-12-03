@@ -192,7 +192,7 @@ placeBtn.onclick = () => {
   const bearingRad = Math.atan2(forward.x, forward.z); // z forward in A-Frame
 
   // 3) Offset some meters ahead using spherical Earth approximation
-  const distance = 10;      // meters in front of user
+  const distance = 1;      // meters in front of user
   const R = 6378137;        // Earth radius in meters
 
   const lat1 = THREE.MathUtils.degToRad(lastCoords.latitude);
