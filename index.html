@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Scale Test2</title>
+<title>Scale Test 3</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -180,6 +180,7 @@ const rotRight   = document.getElementById('rot-right');
 let lastCoords   = null;
 let activeBench  = null;
 let benchCoords  = null;
+let benchLocked  = false;
 
 /* Haversine distance in meters */
 function haversine(lat1, lon1, lat2, lon2){
@@ -246,7 +247,8 @@ function updateBenchScale(){
   const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
 
   // Lerp between 1.0 (near) and 0.2 (far)
-  const scaleVal = THREE.MathUtils.lerp(1.5, 0.05, t);
+  // You can swap this to (1.5, 0.05, t) if you want a more dramatic effect
+  const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
 
   // A-Frame attribute
   activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
@@ -329,6 +331,8 @@ placeBtn.onclick = () => {
   scene.appendChild(bench);
 
   activeBench = bench;
+  benchLocked = false;
+  lockBtn.textContent = "Lock";
   toolbar.style.display = "block";
 
   updateBenchScale();
@@ -347,7 +351,7 @@ const ROT_STEP    = 15;
 
 /* RELATIVE MOVE */
 function move(fwd, side){
-  if (!activeBench) return;
+  if (!activeBench || benchLocked) return;
 
   const p = {...getPos()};
 
@@ -371,37 +375,42 @@ moveLeft.onclick  = ()=>move( 0, -1);
 moveRight.onclick = ()=>move( 0,  1);
 
 heightUp.onclick = ()=>{
-  if (!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const p = {...getPos()};
   p.y += HEIGHT_STEP;
   setPos(p);
 };
 
 heightDown.onclick = ()=>{
-  if (!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const p = {...getPos()};
   p.y -= HEIGHT_STEP;
   setPos(p);
 };
 
 rotLeft.onclick = ()=>{
-  if (!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const r = {...getRot()};
   r.y -= ROT_STEP;
   setRot(r);
 };
 
 rotRight.onclick = ()=>{
-  if (!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const r = {...getRot()};
   r.y += ROT_STEP;
   setRot(r);
 };
 
-/* LOCK TOOLBAR */
+/* LOCK TOOLBAR (only locks transforms, not scaling) */
 lockBtn.onclick = ()=>{
-  activeBench = null;
-  toolbar.style.display = "none";
+  if (!activeBench) return;
+
+  benchLocked = !benchLocked;
+  lockBtn.textContent = benchLocked ? "Unlock" : "Lock";
+
+  // Optional: hide toolbar when locked
+  toolbar.style.display = benchLocked ? "none" : "block";
 };
 </script>
 
