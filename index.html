@@ -1,320 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AR.js GPS + Place & Adjust Bench</title>
+<meta charset="UTF-8">
+<title>Check</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+<!-- A-Frame -->
+<script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 
-  <!-- AR.js with GPS location -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
+<!-- AR.js with GPS (RELIABLE CDN) -->
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/three.js/build/ar-threex-location-only.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
 
-    /* Place button UI */
-    #ui {
-      position: fixed;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      z-index: 9999; /* make sure this is on top of AR.js layers */
-      background: rgba(0,0,0,0.3);
-      padding: 0.5rem 0.75rem;
-      border-radius: 999px;
-      backdrop-filter: blur(6px);
-    }
+/* PLACE BUTTON */
+#ui {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.35);
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+}
 
-    #place-btn {
-      padding: 0.5rem 1rem;
-      border-radius: 999px;
-      border: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      background: #111;
-      color: #fff;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    }
+#place-btn {
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: #111;
+  color: #fff;
+}
 
-    #place-btn:disabled {
-      background: #555;
-      opacity: 0.7;
-    }
+#place-btn:disabled {
+  background: #555;
+  opacity: 0.7;
+}
 
-    /* Transform controls UI */
-    #transform-ui {
-      position: fixed;
-      top: 0.5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      background: rgba(0,0,0,0.4);
-      color: #fff;
-      padding: 0.5rem 0.75rem;
-      border-radius: 12px;
-      backdrop-filter: blur(6px);
-      font-size: 0.75rem;
-      display: none; /* hidden until we have a bench */
-    }
+/* TOOLBAR */
+#transform-ui {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: none;
+}
 
-    #transform-ui h4 {
-      margin: 0 0 0.3rem 0;
-      font-size: 0.8rem;
-      text-align: center;
-    }
+#transform-ui h4 {
+  margin: 0 0 0.4rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
 
-    #transform-ui .row {
-      display: flex;
-      justify-content: center;
-      gap: 0.25rem;
-      margin-bottom: 0.25rem;
-    }
+#transform-ui .row {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.3rem;
+}
 
-    #transform-ui button {
-      border: none;
-      border-radius: 6px;
-      padding: 0.45rem 0.7rem;
-      background: rgba(255,255,255,0.2);
-      color: #fff;
-      font-size: 0.95rem;
-      min-width: 2.8rem;
-    }
+#transform-ui button {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: none;
+  font-size: 1.05rem;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
 
-    #lock-btn {
-      background: #ff6b6b;
-      font-weight: 600;
-      padding-inline: 0.6rem;
-    }
-  </style>
+#lock-btn {
+  width: auto;
+  padding: 0.45rem 1.1rem;
+  background: #ff6b6b;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+</style>
 </head>
 
 <body>
 
-  <!-- Simple UI overlay: place at current GPS -->
-  <div id="ui">
-    <button id="place-btn" disabled>Getting GPS…</button>
+<div id="ui">
+  <button id="place-btn" disabled>Getting GPS…</button>
+</div>
+
+<div id="transform-ui">
+  <h4>Adjust Bench</h4>
+
+  <div class="row">
+    <button id="move-up">↑</button>
   </div>
 
-  <!-- Transform controls overlay -->
-  <div id="transform-ui">
-    <h4>Adjust Bench</h4>
-
-    <!-- Move controls -->
-    <div class="row">
-      <button id="move-up">↑</button>
-    </div>
-    <div class="row">
-      <button id="move-left">←</button>
-      <button id="move-down">↓</button>
-      <button id="move-right">→</button>
-    </div>
-
-    <!-- Height controls -->
-    <div class="row">
-      <button id="height-up">Y+</button>
-      <button id="height-down">Y-</button>
-    </div>
-
-    <!-- Rotation controls -->
-    <div class="row">
-      <button id="rot-left">↺</button>
-      <button id="rot-right">↻</button>
-    </div>
-
-    <!-- Lock button -->
-    <div class="row">
-      <button id="lock-btn">Lock</button>
-    </div>
+  <div class="row">
+    <button id="move-left">←</button>
+    <button id="move-down">↓</button>
+    <button id="move-right">→</button>
   </div>
 
-  <a-scene
-    embedded
-    vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: true"
-    renderer="antialias: true; alpha: true">
+  <div class="row">
+    <button id="height-up">Y+</button>
+    <button id="height-down">Y-</button>
+  </div>
 
-    <!-- Always-visible debug cube -->
-    <a-box position="0 0 -2" color="blue"></a-box>
+  <div class="row">
+    <button id="rot-left">↺</button>
+    <button id="rot-right">↻</button>
+  </div>
 
-    <!-- GPS camera -->
-    <a-camera gps-new-camera="gpsMinDistance: 3; positionMinAccuracy: 50"></a-camera>
+  <div class="row">
+    <button id="lock-btn">Lock</button>
+  </div>
+</div>
 
-    <!-- Example static GPS object (just the red box) -->
-    <a-box
-      color="red"
-      depth="2" height="2" width="2"
-      gps-new-entity-place="latitude: 33.45679; longitude: -111.77721"
-      position="0 0 0">
-    </a-box>
-  </a-scene>
+<a-scene
+ embedded
+ vr-mode-ui="enabled:false"
+ arjs="sourceType:webcam; debugUIEnabled:true"
+ renderer="antialias:true; alpha:true">
 
-  <script>
-    const THREE       = AFRAME.THREE;
-    const sceneEl     = document.querySelector('a-scene');
-    const cameraEl    = document.querySelector('[gps-new-camera]');
-    const placeBtn    = document.getElementById('place-btn');
-    const transformUI = document.getElementById('transform-ui');
-    const lockBtn     = document.getElementById('lock-btn');
+  <!-- GPS camera -->
+  <a-camera gps-new-camera="gpsMinDistance:3; positionMinAccuracy:50"></a-camera>
 
-    let lastCoords = null;
-    let activeBench = null; // last placed bench that we're editing
+</a-scene>
 
-    // When GPS updates, remember coords and enable the button
-    cameraEl.addEventListener('gps-camera-update-position', (e) => {
-      const pos = e.detail.position;
-      lastCoords = {
-        latitude: pos.latitude,
-        longitude: pos.longitude
-      };
+<script>
 
-      placeBtn.disabled = false;
-      placeBtn.textContent = 'Place Bench Here';
-      console.log('GPS update:', lastCoords);
-    });
+const THREE = AFRAME.THREE;
 
-    // On click, place a new Bench at the current GPS position
-    placeBtn.addEventListener('click', () => {
-      if (!lastCoords) {
-        placeBtn.textContent = 'Still getting GPS…';
-        setTimeout(() => {
-          placeBtn.textContent = 'Place Bench Here';
-        }, 1500);
-        return;
-      }
+const scene      = document.querySelector('a-scene');
+const camera     = document.querySelector('[gps-new-camera]');
+const placeBtn   = document.getElementById('place-btn');
+const toolbar    = document.getElementById('transform-ui');
+const lockBtn    = document.getElementById('lock-btn');
 
-      const { latitude, longitude } = lastCoords;
+const moveUp     = document.getElementById('move-up');
+const moveDown   = document.getElementById('move-down');
+const moveLeft   = document.getElementById('move-left');
+const moveRight  = document.getElementById('move-right');
 
-      const entity = document.createElement('a-entity');
-      entity.setAttribute('gltf-model', 'assets/park_bench.glb');
-      entity.setAttribute(
-        'gps-new-entity-place',
-        `latitude: ${latitude}; longitude: ${longitude}`
-      );
-      entity.setAttribute('scale', '1 1 1');
+const heightUp   = document.getElementById('height-up');
+const heightDown = document.getElementById('height-down');
 
-      // Start with no local X/Z offset; Y = 0 (on ground)
-      entity.setAttribute('position', '0 0 0');
+const rotLeft    = document.getElementById('rot-left');
+const rotRight   = document.getElementById('rot-right');
 
-      // Make it face the direction you're looking when you place it
-      const forward = new THREE.Vector3();
-      cameraEl.object3D.getWorldDirection(forward);
-      const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-      entity.setAttribute('rotation', `0 ${yaw} 0`);
+let lastCoords  = null;
+let activeBench = null;
 
-      sceneEl.appendChild(entity);
+/* GPS READY */
+camera.addEventListener('gps-camera-update-position', e => {
 
-      // Set this as the active bench for editing
-      activeBench = entity;
-      transformUI.style.display = 'block';
+  const pos = e.detail.position;
+  if(!pos) return;
 
-      console.log('Placed bench at', latitude, longitude, 'yaw', yaw);
-    });
+  lastCoords = {
+    latitude:  pos.latitude,
+    longitude: pos.longitude
+  };
 
-    // --- Transform controls for activeBench ---
+  placeBtn.disabled = false;
+  placeBtn.textContent = "Place Bench Here";
 
-    function getPos() {
-      if (!activeBench) return null;
-      return Object.assign({}, activeBench.getAttribute('position'));
-    }
+});
 
-    function setPos(pos) {
-      if (!activeBench) return;
-      activeBench.setAttribute('position', pos);
-    }
 
-    function getRot() {
-      if (!activeBench) return null;
-      return Object.assign({}, activeBench.getAttribute('rotation'));
-    }
+/* PLACE BENCH */
+placeBtn.onclick = () => {
 
-    function setRot(rot) {
-      if (!activeBench) return;
-      activeBench.setAttribute('rotation', rot);
-    }
+  if(!lastCoords) return;
 
-    const MOVE_STEP   = 2.0;
-    const HEIGHT_STEP = 2.5;
-    const ROT_STEP    = 15; // degrees
+  const bench = document.createElement('a-entity');
 
-    function moveRelative(forwardSign, rightSign) {
-      if (!activeBench) return;
+  bench.setAttribute('gltf-model','assets/park_bench.glb');
+  bench.setAttribute(
+    'gps-new-entity-place',
+    `latitude:${lastCoords.latitude}; longitude:${lastCoords.longitude}`
+  );
 
-      const pos = getPos();
-      if (!pos) return;
+  bench.setAttribute('scale','1 1 1');
+  bench.setAttribute('position','0 0 0');
 
-      const forward = new THREE.Vector3();
-      cameraEl.object3D.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
+  const forward = new THREE.Vector3();
+  camera.object3D.getWorldDirection(forward);
+  const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
+  bench.setAttribute('rotation', `0 ${yaw} 0`);
 
-      const right = new THREE.Vector3(forward.z, 0, -forward.x);
+  scene.appendChild(bench);
 
-      const dx = (forward.x * forwardSign + right.x * rightSign) * MOVE_STEP;
-      const dz = (forward.z * forwardSign + right.z * rightSign) * MOVE_STEP;
+  activeBench = bench;
+  toolbar.style.display = "block";
+};
 
-      pos.x += dx;
-      pos.z += dz;
 
-      setPos(pos);
-    }
+/* HELPERS */
+function getPos(){
+  return activeBench?.getAttribute('position');
+}
+function getRot(){
+  return activeBench?.getAttribute('rotation');
+}
 
-    document.getElementById('move-up').addEventListener('click', () => {
-      moveRelative(1, 0); // forward
-    });
+function setPos(p){
+  activeBench?.setAttribute('position', p);
+}
+function setRot(r){
+  activeBench?.setAttribute('rotation', r);
+}
 
-    document.getElementById('move-down').addEventListener('click', () => {
-      moveRelative(-1, 0); // backward
-    });
 
-    document.getElementById('move-left').addEventListener('click', () => {
-      moveRelative(0, -1); // left
-    });
+const MOVE_STEP   = 2;
+const HEIGHT_STEP = 1;
+const ROT_STEP    = 15;
 
-    document.getElementById('move-right').addEventListener('click', () => {
-      moveRelative(0, 1); // right
-    });
 
-    document.getElementById('height-up').addEventListener('click', () => {
-      if (!activeBench) return;
-      const pos = getPos();
-      pos.y += HEIGHT_STEP;
-      setPos(pos);
-    });
+/* RELATIVE MOVE */
+function move(fwd, side){
 
-    document.getElementById('height-down').addEventListener('click', () => {
-      if (!activeBench) return;
-      const pos = getPos();
-      pos.y -= HEIGHT_STEP;
-      setPos(pos);
-    });
+  if(!activeBench) return;
 
-    document.getElementById('rot-left').addEventListener('click', () => {
-      if (!activeBench) return;
-      const rot = getRot();
-      rot.y -= ROT_STEP;
-      setRot(rot);
-    });
+  const p = {...getPos()};
 
-    document.getElementById('rot-right').addEventListener('click', () => {
-      if (!activeBench) return;
-      const rot = getRot();
-      rot.y += ROT_STEP;
-      setRot(rot);
-    });
+  const fwdVec = new THREE.Vector3();
+  camera.object3D.getWorldDirection(fwdVec);
+  fwdVec.y = 0;
+  fwdVec.normalize();
 
-    // Lock button: hide toolbar and stop editing this bench
-    lockBtn.addEventListener('click', () => {
-      activeBench = null;
-      transformUI.style.display = 'none';
-    });
-  </script>
+  const right = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
+
+  p.x += (fwdVec.x * fwd + right.x * side) * MOVE_STEP;
+  p.z += (fwdVec.z * fwd + right.z * side) * MOVE_STEP;
+
+  setPos(p);
+}
+
+
+/* BUTTON EVENTS */
+moveUp.onclick    = ()=>move( 1,  0);
+moveDown.onclick  = ()=>move(-1,  0);
+moveLeft.onclick  = ()=>move( 0, -1);
+moveRight.onclick = ()=>move( 0,  1);
+
+heightUp.onclick = ()=>{
+  if(!activeBench) return;
+  const p = {...getPos()};
+  p.y += HEIGHT_STEP;
+  setPos(p);
+};
+
+heightDown.onclick = ()=>{
+  if(!activeBench) return;
+  const p = {...getPos()};
+  p.y -= HEIGHT_STEP;
+  setPos(p);
+};
+
+rotLeft.onclick = ()=>{
+  if(!activeBench) return;
+  const r = {...getRot()};
+  r.y -= ROT_STEP;
+  setRot(r);
+};
+
+rotRight.onclick = ()=>{
+  if(!activeBench) return;
+  const r = {...getRot()};
+  r.y += ROT_STEP;
+  setRot(r);
+};
+
+/* LOCK TOOLBAR */
+lockBtn.onclick = ()=>{
+  activeBench = null;
+  toolbar.style.display = "none";
+};
+
+</script>
 
 </body>
 </html>
