@@ -86,6 +86,12 @@
       font-size: 0.75rem;
       min-width: 2rem;
     }
+
+    #lock-btn {
+      background: #ff6b6b;
+      font-weight: 600;
+      padding-inline: 0.6rem;
+    }
   </style>
 </head>
 
@@ -121,6 +127,11 @@
       <button id="rot-left">↺</button>
       <button id="rot-right">↻</button>
     </div>
+
+    <!-- Lock button -->
+    <div class="row">
+      <button id="lock-btn">Lock</button>
+    </div>
   </div>
 
   <a-scene
@@ -135,7 +146,7 @@
     <!-- GPS camera -->
     <a-camera gps-new-camera="gpsMinDistance: 3; positionMinAccuracy: 50"></a-camera>
 
-    <!-- Example static GPS objects (note: no position X/Z offset here) -->
+    <!-- Example static GPS objects -->
     <a-box
       color="red"
       depth="2" height="2" width="2"
@@ -161,6 +172,7 @@
     const cameraEl    = document.querySelector('[gps-new-camera]');
     const placeBtn    = document.getElementById('place-btn');
     const transformUI = document.getElementById('transform-ui');
+    const lockBtn     = document.getElementById('lock-btn');
 
     let lastCoords = null;
     let activeMagnemite = null; // last placed magnemite that we’re editing
@@ -218,7 +230,6 @@
 
     // --- Transform controls for activeMagnemite ---
 
-    // Helper: get/set position & rotation cleanly
     function getPos() {
       if (!activeMagnemite) return null;
       return Object.assign({}, activeMagnemite.getAttribute('position'));
@@ -239,25 +250,22 @@
       activeMagnemite.setAttribute('rotation', rot);
     }
 
-    // Nudge distance in "world" units (roughly meters)
-    const MOVE_STEP = 1.0;
+    const MOVE_STEP   = 1.0;
     const HEIGHT_STEP = 0.5;
-    const ROT_STEP = 15; // degrees
+    const ROT_STEP    = 15; // degrees
 
-    // Move relative to camera facing (so "up" always means "further away")
     function moveRelative(forwardSign, rightSign) {
       if (!activeMagnemite) return;
 
       const pos = getPos();
       if (!pos) return;
 
-      // Get camera forward and right on XZ plane
       const forward = new THREE.Vector3();
       cameraEl.object3D.getWorldDirection(forward);
       forward.y = 0;
       forward.normalize();
 
-      const right = new THREE.Vector3(forward.z, 0, -forward.x); // 90° rotated
+      const right = new THREE.Vector3(forward.z, 0, -forward.x);
 
       const dx = (forward.x * forwardSign + right.x * rightSign) * MOVE_STEP;
       const dz = (forward.z * forwardSign + right.z * rightSign) * MOVE_STEP;
@@ -268,7 +276,6 @@
       setPos(pos);
     }
 
-    // Button hooks
     document.getElementById('move-up').addEventListener('click', () => {
       moveRelative(1, 0); // forward
     });
@@ -311,6 +318,12 @@
       const rot = getRot();
       rot.y += ROT_STEP;
       setRot(rot);
+    });
+
+    // Lock button: hide toolbar and stop editing this Magnemite
+    lockBtn.addEventListener('click', () => {
+      activeMagnemite = null;
+      transformUI.style.display = 'none';
     });
   </script>
 
