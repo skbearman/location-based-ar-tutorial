@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>20M radius</title>
+<title>Bench appear</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -335,24 +335,11 @@ placeBtn.onclick = () => {
     'gps-new-entity-place',
     `latitude:${benchLat}; longitude:${benchLon}`
   );
-  // Slightly larger initial scale so it's easier to see
-  bench.setAttribute('scale','2 2 2');
-  bench.setAttribute('position','0 0 0');
+  bench.setAttribute('scale','1 1 1');       // back to original
+  bench.setAttribute('position','0 0 0');    // no recentering
 
   const yawDeg = THREE.MathUtils.radToDeg(bearingRad);
   bench.setAttribute('rotation', `0 ${yawDeg} 0`);
-
-  // When the model loads, re-center its mesh so origin is at the model center
-  bench.addEventListener('model-loaded', () => {
-    const obj = bench.getObject3D('mesh');
-    if (!obj) return;
-
-    const box = new THREE.Box3().setFromObject(obj);
-    const center = box.getCenter(new THREE.Vector3());
-
-    // Shift the mesh so its center is at (0,0,0) of the entity
-    obj.position.sub(center);
-  });
 
   scene.appendChild(bench);
 
