@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>4 shAred space AR</title>
+  <title>hide side panel</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -32,7 +32,7 @@
     body {
       display: flex;
       flex-direction: column;
-      background: #000; /* nice fallback behind AR */
+      background: #000; /* fallback behind AR */
     }
 
     /* HEADER */
@@ -50,13 +50,29 @@
       z-index: 10; /* above AR */
     }
 
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .top-bar button {
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    #togglePanelBtn {
+      background: #fff;
+      border: 1px solid #ccc;
+      color: #333;
+    }
+
+    #logoutBtn {
       background:#e53935;
       color:white;
       border:none;
-      border-radius:6px;
-      padding:6px 12px;
-      cursor:pointer;
     }
 
     /* MAIN APP AREA: left panel + right camera region */
@@ -74,14 +90,14 @@
     .camera-view {
       flex: 1;
       position: relative;
-      /* background transparent so AR shows through */
       display: flex;
       align-items: stretch;
       justify-content: stretch;
       overflow: hidden;
+      /* transparent so AR shows through */
+      background: transparent;
     }
 
-    /* We still keep an overlay container in case you want HUD stuff later */
     #sceneOverlay {
       position: absolute;
       inset: 0;
@@ -89,9 +105,9 @@
       z-index: 6;
     }
 
-    /* LEFT: side panel */
+    /* LEFT: side panel (thinner) */
     aside.side-panel {
-      width: 360px;
+      width: 260px; /* was 360px */
       border-right: 1px solid #ddd;
       background: #f7f7f7;
       display: flex;
@@ -131,9 +147,9 @@
       min-height: 0;
     }
 
-    /* Left vertical category column */
+    /* Left vertical category column (thinner) */
     .category-column {
-      width: 130px;
+      width: 100px; /* was 130px */
       background: #f1f1f1;
       border-right: 1px solid #ddd;
       padding: 8px;
@@ -164,8 +180,8 @@
     }
 
     .category-btn-vertical img {
-      width: 50px;
-      height: 50px;
+      width: 44px;
+      height: 44px;
       border-radius: 8px;
       object-fit: cover;
       margin-bottom: 4px;
@@ -360,10 +376,13 @@
 </head>
 <body>
 
-  <!-- HEADER: account info + logout -->
+  <!-- HEADER: account info + panel toggle + logout -->
   <div class="top-bar">
-    <div id="accountInfo">Checking login...</div>
-    <button onclick="doLogout()">Logout</button>
+    <div class="top-bar-left">
+      <button id="togglePanelBtn">Hide panel</button>
+      <div id="accountInfo">Checking login...</div>
+    </div>
+    <button id="logoutBtn" onclick="doLogout()">Logout</button>
   </div>
 
   <!-- AR UI (bench placement) -->
@@ -466,6 +485,20 @@
     const categoryColumn = document.getElementById('categoryColumn');
     const cameraView     = document.getElementById('cameraView');
     const accountInfoEl  = document.getElementById('accountInfo');
+
+    const sidePanel      = document.querySelector('.side-panel');
+    const togglePanelBtn = document.getElementById('togglePanelBtn');
+    let panelVisible     = true;
+
+    function setPanelVisible(visible) {
+      panelVisible = visible;
+      sidePanel.style.display = visible ? 'flex' : 'none';
+      togglePanelBtn.textContent = visible ? 'Hide panel' : 'Show panel';
+    }
+
+    togglePanelBtn.addEventListener('click', () => {
+      setPanelVisible(!panelVisible);
+    });
 
     // --- LOGIN CHECK ---
     function checkLogin() {
@@ -720,7 +753,7 @@
     function haversine(lat1, lon1, lat2, lon2){
       const R = 6378137;
       const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
-      const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
+      const dLon = THREE.MathUtils.degToRad(lat2 - lon1);
 
       const a =
         Math.sin(dLat/2) ** 2 +
