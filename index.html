@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>shAred space AR</title>
+  <title>Combo Trial 2</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -39,7 +39,7 @@
     .camera-view {
       flex: 1;
       position: relative;
-      background: #111;
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -52,7 +52,7 @@
       height: 100%;
     }
 
-    /* Optional overlay container for future 3D or UI layering */
+    /* Overlay container for future layering */
     #sceneOverlay {
       position: absolute;
       inset: 0;
@@ -300,6 +300,37 @@
       font-size: 0.7rem;
       white-space: pre-line;
       z-index: 9999;
+    }
+
+    /* --- AR.js video positioning fix --- */
+
+    /* Desktop layout: header = 40px tall, sidebar = 360px wide */
+    .arjs-video {
+      position: fixed !important;
+      top: 40px;                    /* below header */
+      left: 360px;                  /* to the right of side panel */
+      width: calc(100vw - 360px);
+      height: calc(100vh - 40px);
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    /* Make A-Frame canvas always cover the scene area */
+    a-scene,
+    a-scene .a-canvas,
+    a-scene canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Mobile override: sidebar stacks on top, so AR fills below header */
+    @media (max-width: 768px) {
+      .arjs-video {
+        top: 40px;                 /* still under header */
+        left: 0;
+        width: 100vw;
+        height: calc(100vh - 40px);
+      }
     }
   </style>
 </head>
@@ -612,10 +643,9 @@
           }));
         });
 
-        // optional click: (still stubbed) – later we can wire this to AR scene
+        // optional click: currently just logs; later can spawn model in AR instead of bench
         div.addEventListener('click', () => {
           console.log('Clicked model from gallery:', item);
-          // You can later call addModelToSceneAR(item) here if you want
         });
 
         galleryGrid.appendChild(div);
@@ -650,7 +680,7 @@
         }
 
         console.log('Dropped model on AR view:', modelUrl, meta);
-        // Later: integrate with AR placement (e.g., spawn this model instead of bench)
+        // Later: integrate with AR placement (e.g., spawn this model instead of the bench).
       });
     }
 
@@ -794,6 +824,7 @@ dist ~ ${d.toFixed(1)} m`;
       };
 
       const bench = document.createElement('a-entity');
+      // you can change this path if you prefer library/models/park_bench.glb
       bench.setAttribute('gltf-model','assets/park_bench.glb');
       bench.setAttribute(
         'gps-new-entity-place',
