@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bench – 3m GPS Offset + Debug + Scale</title>
+<title>Bench offset</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 
-<!-- AR.js with GPS (RELIABLE CDN) -->
+<!-- AR.js with GPS -->
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/three.js/build/ar-threex-location-only.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
 
@@ -92,19 +92,18 @@ body {
   font-size: 0.95rem;
 }
 
-/* DEBUG OVERLAY */
+/* DEBUG */
 #debug {
   position: fixed;
   left: 0.5rem;
   bottom: 0.5rem;
-  z-index: 9999;
   background: rgba(0,0,0,0.6);
   color: #0f0;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
   font-size: 0.7rem;
-  max-width: 60vw;
   white-space: pre-line;
+  z-index: 9999;
 }
 </style>
 </head>
@@ -146,72 +145,70 @@ body {
 <div id="debug">GPS: waiting…</div>
 
 <a-scene
- embedded
- vr-mode-ui="enabled:false"
- arjs="sourceType:webcam; debugUIEnabled:true"
- renderer="antialias:true; alpha:true">
+  embedded
+  vr-mode-ui="enabled:false"
+  arjs="sourceType:webcam; debugUIEnabled:true"
+  renderer="antialias:true; alpha:true">
 
-  <!-- GPS camera -->
   <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
-
 </a-scene>
 
 <script>
-const THREE      = AFRAME.THREE;
+const THREE   = AFRAME.THREE;
 
-const scene      = document.querySelector('a-scene');
-const camera     = document.querySelector('[gps-new-camera]');
-const placeBtn   = document.getElementById('place-btn');
-const toolbar    = document.getElementById('transform-ui');
-const lockBtn    = document.getElementById('lock-btn');
-const debugEl    = document.getElementById('debug');
+const scene  = document.querySelector('a-scene');
+const camera = document.querySelector('[gps-new-camera]');
+
+const placeBtn = document.getElementById('place-btn');
+const toolbar = document.getElementById('transform-ui');
+const lockBtn = document.getElementById('lock-btn');
+const debugEl = document.getElementById('debug');
 
 const moveUp     = document.getElementById('move-up');
 const moveDown   = document.getElementById('move-down');
 const moveLeft   = document.getElementById('move-left');
 const moveRight  = document.getElementById('move-right');
-
 const heightUp   = document.getElementById('height-up');
 const heightDown = document.getElementById('height-down');
-
 const rotLeft    = document.getElementById('rot-left');
 const rotRight   = document.getElementById('rot-right');
 
-let lastCoords   = null;
-let activeBench  = null;
-let benchCoords  = null;
-let benchLocked  = false;
+let lastCoords  = null;
+let activeBench = null;
+let benchCoords = null;
+let benchLocked = false;
 
-/* Haversine distance in meters */
+/* Haversine distance */
 function haversine(lat1, lon1, lat2, lon2){
   const R = 6378137;
   const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
   const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
+
   const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.sin(dLat/2) ** 2 +
     Math.cos(THREE.MathUtils.degToRad(lat1)) *
     Math.cos(THREE.MathUtils.degToRad(lat2)) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
+    Math.sin(dLon/2) ** 2;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-/* Update debug overlay */
+/* Debug overlay */
 function updateDebug(){
-  let text = '';
-  if (!lastCoords){
-    text = 'GPS: waiting…';
-  } else {
-    text = `You:
+  let t = 'GPS: waiting…';
+
+  if (lastCoords){
+    t = `You:
 lat ${lastCoords.latitude.toFixed(6)}
 lon ${lastCoords.longitude.toFixed(6)}`;
+
     if (benchCoords){
       const d = haversine(
         lastCoords.latitude, lastCoords.longitude,
         benchCoords.latitude, benchCoords.longitude
       );
-      text += `
+
+      t += `
 
 Bench:
 lat ${benchCoords.latitude.toFixed(6)}
@@ -220,14 +217,12 @@ dist ~ ${d.toFixed(1)} m`;
 
       if (activeBench) {
         const s = activeBench.getAttribute('scale');
-        if (s && typeof s.x === 'number') {
-          text += `
-scale ~ ${s.x.toFixed(2)}`;
-        }
+        t += `\nscale ~ ${s.x.toFixed(2)}`;
       }
     }
   }
-  debugEl.textContent = text;
+
+  debugEl.textContent = t;
 }
 
 /* Scale bench based on GPS distance */
@@ -239,101 +234,64 @@ function updateBenchScale(){
     benchCoords.latitude, benchCoords.longitude
   );
 
-  // Tunable parameters
-  const NEAR = 3;   // meters or closer → full size
-  const FAR  = 50;  // meters or farther → min size
+  const NEAR = 3;
+  const FAR  = 50;
 
-  // Normalized 0–1 based on distance
   const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
-
-  // Lerp between 1.0 (near) and 0.2 (far)
-  // You can change to (1.5, 0.05, t) if you want a more dramatic effect
   const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
 
-  // A-Frame attribute
   activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
 
-  // Force on underlying three.js object as well
-  if (activeBench.object3D) {
+  if (activeBench.object3D){
     activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
   }
 
-  // Update debug to reflect new scale
   updateDebug();
 }
 
-/* GPS READY - listen on window (AR.js dispatches here) */
-window.addEventListener('gps-camera-update-position', e => {
-  const pos = e.detail && e.detail.position;
-  if (!pos) return;
+/* GPS updates */
+window.addEventListener('gps-camera-update-position', e=>{
+  if (!e.detail?.position) return;
 
   lastCoords = {
-    latitude:  pos.latitude,
-    longitude: pos.longitude
+    latitude: e.detail.position.latitude,
+    longitude: e.detail.position.longitude
   };
 
   placeBtn.disabled = false;
-  placeBtn.textContent = "Place Bench Ahead";
+  placeBtn.textContent = 'Place Bench Ahead';
 
-  updateDebug();
   updateBenchScale();
 });
 
-/* PLACE BENCH WITH 3m GPS OFFSET */
-placeBtn.onclick = () => {
+/* PLACE BENCH — ALWAYS SPAWNS IN FRONT */
+placeBtn.onclick = ()=>{
   if (!lastCoords) return;
 
-  // Camera forward direction
-  const forward = new THREE.Vector3();
-  camera.object3D.getWorldDirection(forward);
-  forward.y = 0;
-  forward.normalize();
-
-  // Bearing in radians
-  const bearingRad = Math.atan2(forward.x, forward.z);
-
-  // Offset 3 m ahead
-  const distance = 3;
-  const R = 6378137;
-
-  const lat1 = THREE.MathUtils.degToRad(lastCoords.latitude);
-  const lon1 = THREE.MathUtils.degToRad(lastCoords.longitude);
-  const angDist = distance / R;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(angDist) +
-    Math.cos(lat1) * Math.sin(angDist) * Math.cos(bearingRad)
-  );
-
-  const lon2 = lon1 + Math.atan2(
-    Math.sin(bearingRad) * Math.sin(angDist) * Math.cos(lat1),
-    Math.cos(angDist) - Math.sin(lat1) * Math.sin(lat2)
-  );
-
-  const benchLat = THREE.MathUtils.radToDeg(lat2);
-  const benchLon = THREE.MathUtils.radToDeg(lon2);
-
-  benchCoords = { latitude: benchLat, longitude: benchLon };
-  updateDebug();
+  benchCoords = {
+    latitude: lastCoords.latitude,
+    longitude: lastCoords.longitude
+  };
 
   const bench = document.createElement('a-entity');
   bench.setAttribute('gltf-model','assets/park_bench.glb');
   bench.setAttribute(
     'gps-new-entity-place',
-    `latitude:${benchLat}; longitude:${benchLon}`
+    `latitude:${benchCoords.latitude}; longitude:${benchCoords.longitude}`
   );
-  bench.setAttribute('scale','1 1 1');
-  bench.setAttribute('position','0 0 0');
 
-  const yawDeg = THREE.MathUtils.radToDeg(bearingRad);
-  bench.setAttribute('rotation', `0 ${yawDeg} 0`);
+  // 3 meters directly in front of the camera
+  bench.setAttribute('position','0 0 -3');
+
+  bench.setAttribute('rotation','0 0 0');
+  bench.setAttribute('scale','1 1 1');
 
   scene.appendChild(bench);
 
   activeBench = bench;
   benchLocked = false;
-  lockBtn.textContent = "Lock";
-  toolbar.style.display = "block";
+  lockBtn.textContent = 'Lock';
+  toolbar.style.display = 'block';
 
   updateBenchScale();
 };
@@ -341,38 +299,30 @@ placeBtn.onclick = () => {
 /* HELPERS */
 function getPos(){ return activeBench?.getAttribute('position'); }
 function getRot(){ return activeBench?.getAttribute('rotation'); }
-
 function setPos(p){ activeBench?.setAttribute('position', p); }
 function setRot(r){ activeBench?.setAttribute('rotation', r); }
 
-const MOVE_STEP   = 5;
-const HEIGHT_STEP = 5;
-const ROT_STEP    = 15;
+const MOVE_STEP = 1;
+const HEIGHT_STEP = 1;
+const ROT_STEP  = 15;
 
-/* RELATIVE MOVE */
+/* RELATIVE MOVEMENT */
 function move(fwd, side){
   if (!activeBench || benchLocked) return;
 
   const p = {...getPos()};
 
-  const fwdVec = new THREE.Vector3();
-  camera.object3D.getWorldDirection(fwdVec);
-  fwdVec.y = 0;
-  fwdVec.normalize();
-
-  const right = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
-
-  p.x += (fwdVec.x * fwd + right.x * side) * MOVE_STEP;
-  p.z += (fwdVec.z * fwd + right.z * side) * MOVE_STEP;
+  p.z += -fwd * MOVE_STEP;
+  p.x +=  side * MOVE_STEP;
 
   setPos(p);
 }
 
-/* BUTTON EVENTS */
-moveUp.onclick    = ()=>move( 1,  0);
-moveDown.onclick  = ()=>move(-1,  0);
-moveLeft.onclick  = ()=>move( 0, -1);
-moveRight.onclick = ()=>move( 0,  1);
+/* CONTROLS */
+moveUp.onclick    = ()=>move( 1, 0);
+moveDown.onclick  = ()=>move(-1, 0);
+moveLeft.onclick  = ()=>move( 0,-1);
+moveRight.onclick = ()=>move( 0, 1);
 
 heightUp.onclick = ()=>{
   if (!activeBench || benchLocked) return;
@@ -380,7 +330,6 @@ heightUp.onclick = ()=>{
   p.y += HEIGHT_STEP;
   setPos(p);
 };
-
 heightDown.onclick = ()=>{
   if (!activeBench || benchLocked) return;
   const p = {...getPos()};
@@ -394,7 +343,6 @@ rotLeft.onclick = ()=>{
   r.y -= ROT_STEP;
   setRot(r);
 };
-
 rotRight.onclick = ()=>{
   if (!activeBench || benchLocked) return;
   const r = {...getRot()};
@@ -402,14 +350,11 @@ rotRight.onclick = ()=>{
   setRot(r);
 };
 
-/* LOCK TOOLBAR (only locks transforms, not scaling) */
+/* LOCK */
 lockBtn.onclick = ()=>{
   if (!activeBench) return;
-
   benchLocked = !benchLocked;
   lockBtn.textContent = benchLocked ? "Unlock" : "Lock";
-
-  // Optional: hide toolbar when locked
   toolbar.style.display = benchLocked ? "none" : "block";
 };
 </script>
