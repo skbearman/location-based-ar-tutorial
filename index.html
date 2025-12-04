@@ -1,394 +1,903 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>fix orientation + 20m visibility</title>
+  <meta charset="UTF-8" />
+  <title>shAred space AR</title>
 
-<!-- A-Frame -->
-<script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 
-<!-- AR.js with GPS -->
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/three.js/build/ar-threex-location-only.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
+  <!-- AR.js with GPS -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/three.js/build/ar-threex-location-only.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
 
-<style>
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: system-ui, sans-serif;
-}
+  <!-- asyncReq.js must define loadFile() -->
+  <script src="asyncReq.js"></script>
 
-/* PLACE BUTTON */
-#ui {
-  position: fixed;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.35);
-  padding: 0.6rem 0.9rem;
-  border-radius: 999px;
-  z-index: 9999;
-  backdrop-filter: blur(6px);
-}
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-#place-btn {
-  padding: 0.85rem 1.5rem;
-  border-radius: 999px;
-  border: none;
-  font-size: 1.05rem;
-  font-weight: 600;
-  background: #111;
-  color: #fff;
-}
+    html, body {
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      overflow: hidden;
+    }
 
-#place-btn:disabled {
-  background: #555;
-  opacity: 0.7;
-}
+    .app-container {
+      display: flex;
+      height: calc(100vh - 40px); /* leave space for header bar */
+      width: 100vw;
+      overflow: hidden;
+    }
 
-/* TOOLBAR */
-#transform-ui {
-  position: fixed;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.45);
-  color: #fff;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  backdrop-filter: blur(6px);
-  z-index: 9999;
-  display: none;
-}
+    /* RIGHT: AR camera view */
+    .camera-view {
+      flex: 1;
+      position: relative;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
 
-#transform-ui h4 {
-  margin: 0 0 0.4rem 0;
-  text-align: center;
-  font-size: 0.9rem;
-}
+    /* Make a-scene fill the camera pane */
+    .camera-view a-scene {
+      width: 100%;
+      height: 100%;
+    }
 
-#transform-ui .row {
-  display: flex;
-  justify-content: center;
-  gap: 0.35rem;
-  margin-bottom: 0.3rem;
-}
+    /* Optional overlay container for future 3D or UI layering */
+    #sceneOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
 
-#transform-ui button {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  border: none;
-  font-size: 1.05rem;
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-}
+    /* LEFT: side panel */
+    aside.side-panel {
+      width: 360px;
+      border-right: 1px solid #ddd;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+    }
 
-#lock-btn {
-  width: auto;
-  padding: 0.45rem 1.1rem;
-  background: #ff6b6b;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
+    /* Search bar */
+    .search-bar-wrapper {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      background: #fff;
+    }
 
-/* DEBUG */
-#debug {
-  position: fixed;
-  left: 0.5rem;
-  bottom: 0.5rem;
-  background: rgba(0,0,0,0.6);
-  color: #0f0;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  white-space: pre-line;
-  z-index: 9999;
-}
-</style>
+    .search-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: #4285f4;
+      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
+
+    /* BODY: vertical categories (left) + gallery (right) */
+    .panel-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left vertical category column */
+    .category-column {
+      width: 130px;
+      background: #f1f1f1;
+      border-right: 1px solid #ddd;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .category-btn-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: none;
+      background: #fff;
+      border-radius: 10px;
+      padding: 6px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-size: 11px;
+      text-align: center;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .category-btn-vertical:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.14);
+    }
+
+    .category-btn-vertical img {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-bottom: 4px;
+    }
+
+    .category-btn-vertical span {
+      white-space: normal;
+    }
+
+    .category-btn-vertical.active {
+      outline: 2px solid #4285f4;
+    }
+
+    /* Right gallery column */
+    .gallery-column {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    .gallery-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px;
+    }
+
+    .gallery-item {
+      background: #fff;
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      cursor: grab;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 11px;
+      text-align: center;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .gallery-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.14);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+
+    .gallery-empty {
+      font-size: 13px;
+      color: #666;
+      padding: 8px 4px;
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        flex-direction: column;
+        height: auto;
+      }
+      aside.side-panel {
+        width: 100%;
+        height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+      }
+      .camera-view {
+        height: 55vh;
+      }
+    }
+
+    /* --- AR UI from your working code --- */
+
+    /* PLACE BUTTON */
+    #ui {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.35);
+      padding: 0.6rem 0.9rem;
+      border-radius: 999px;
+      z-index: 9999;
+      backdrop-filter: blur(6px);
+    }
+
+    #place-btn {
+      padding: 0.85rem 1.5rem;
+      border-radius: 999px;
+      border: none;
+      font-size: 1.05rem;
+      font-weight: 600;
+      background: #111;
+      color: #fff;
+    }
+
+    #place-btn:disabled {
+      background: #555;
+      opacity: 0.7;
+    }
+
+    /* TOOLBAR */
+    #transform-ui {
+      position: fixed;
+      top: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+      display: none;
+    }
+
+    #transform-ui h4 {
+      margin: 0 0 0.4rem 0;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    #transform-ui .row {
+      display: flex;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-bottom: 0.3rem;
+    }
+
+    #transform-ui button {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1.05rem;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    #lock-btn {
+      width: auto;
+      padding: 0.45rem 1.1rem;
+      background: #ff6b6b;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    /* DEBUG */
+    #debug {
+      position: fixed;
+      left: 0.5rem;
+      bottom: 0.5rem;
+      background: rgba(0,0,0,0.6);
+      color: #0f0;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      white-space: pre-line;
+      z-index: 9999;
+    }
+  </style>
 </head>
-
 <body>
 
-<div id="ui">
-  <button id="place-btn" disabled>Getting GPS…</button>
-</div>
-
-<div id="transform-ui">
-  <h4>Adjust Bench</h4>
-
-  <div class="row">
-    <button id="move-up">↑</button>
+  <!-- HEADER: account info + logout -->
+  <div style="
+    height: 40px;
+    padding: 6px 12px;
+    background: #fafafa;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+  ">
+    <div id="accountInfo">Checking login...</div>
+    <button
+      onclick="doLogout()"
+      style="
+        background:#e53935;
+        color:white;
+        border:none;
+        border-radius:6px;
+        padding:6px 12px;
+        cursor:pointer;
+      ">
+      Logout
+    </button>
   </div>
 
-  <div class="row">
-    <button id="move-left">←</button>
-    <button id="move-down">↓</button>
-    <button id="move-right">→</button>
+  <!-- AR UI (bench placement) -->
+  <div id="ui">
+    <button id="place-btn" disabled>Getting GPS…</button>
   </div>
 
-  <div class="row">
-    <button id="height-up">Y+</button>
-    <button id="height-down">Y-</button>
+  <div id="transform-ui">
+    <h4>Adjust Bench</h4>
+
+    <div class="row">
+      <button id="move-up">↑</button>
+    </div>
+
+    <div class="row">
+      <button id="move-left">←</button>
+      <button id="move-down">↓</button>
+      <button id="move-right">→</button>
+    </div>
+
+    <div class="row">
+      <button id="height-up">Y+</button>
+      <button id="height-down">Y-</button>
+    </div>
+
+    <div class="row">
+      <button id="rot-left">↺</button>
+      <button id="rot-right">↻</button>
+    </div>
+
+    <div class="row">
+      <button id="lock-btn">Lock</button>
+    </div>
   </div>
 
-  <div class="row">
-    <button id="rot-left">↺</button>
-    <button id="rot-right">↻</button>
+  <div id="debug">GPS: waiting…</div>
+
+  <div class="app-container">
+    <!-- LEFT: Side panel -->
+    <aside class="side-panel">
+      <!-- Search bar -->
+      <div class="search-bar-wrapper">
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Search models..."
+        />
+      </div>
+
+      <!-- BODY: vertical categories + gallery -->
+      <div class="panel-body">
+        <!-- Vertical category thumbnails (filled by JS) -->
+        <div class="category-column" id="categoryColumn"></div>
+
+        <!-- Gallery -->
+        <div class="gallery-column">
+          <div class="gallery-title" id="galleryTitle"></div>
+          <div class="gallery-grid" id="galleryGrid"></div>
+          <div class="gallery-empty" id="galleryEmpty" style="display:none;">
+            No models found.
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: AR.js camera + GPS-based bench -->
+    <div class="camera-view" id="cameraView">
+      <a-scene
+        embedded
+        vr-mode-ui="enabled:false"
+        arjs="sourceType:webcam; debugUIEnabled:true"
+        renderer="antialias:true; alpha:true">
+
+        <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
+      </a-scene>
+
+      <div id="sceneOverlay"></div>
+    </div>
   </div>
 
-  <div class="row">
-    <button id="lock-btn">Lock</button>
-  </div>
-</div>
+  <script>
+    // --- CONFIG: base paths for the library ---
+    const LIBRARY_BASE = 'library';
+    const MODEL_BASE   = `${LIBRARY_BASE}/models`;
+    const THUMB_BASE   = `${LIBRARY_BASE}/thumbnails`;
+    const META_PATH    = `${LIBRARY_BASE}/meta.json`;
 
-<div id="debug">GPS: waiting…</div>
+    // --- STATE for gallery ---
+    let libraryItems = [];
+    let categories = [];        // { id, label, thumbUrl }
+    let currentCategoryId = null;
 
-<a-scene
-  embedded
-  vr-mode-ui="enabled:false"
-  arjs="sourceType:webcam; debugUIEnabled:true"
-  renderer="antialias:true; alpha:true">
+    const galleryTitle   = document.getElementById('galleryTitle');
+    const galleryGrid    = document.getElementById('galleryGrid');
+    const galleryEmpty   = document.getElementById('galleryEmpty');
+    const searchInput    = document.getElementById('searchInput');
+    const categoryColumn = document.getElementById('categoryColumn');
+    const cameraView     = document.getElementById('cameraView');
+    const accountInfoEl  = document.getElementById('accountInfo');
 
-  <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
-</a-scene>
+    // --- LOGIN CHECK ---
+    function checkLogin() {
+      // loadFile comes from asyncReq.js
+      loadFile("/loginStatus", function(data) {
+        if (data === "0") {
+          // not logged in → go to login page
+          window.location.href = "./login.html";
+          return;
+        }
+        // logged in: show whatever the server returned
+        accountInfoEl.textContent = data;
+      });
+    }
 
-<script>
-const THREE   = AFRAME.THREE;
+    function doLogout() {
+      const confirmLogout = confirm("Log out?");
+      if (!confirmLogout) return;
 
-const scene  = document.querySelector('a-scene');
-const camera = document.querySelector('[gps-new-camera]');
+      loadFile("/logout", function() {
+        // after logout, go back to login screen
+        window.location.href = "./login.html";
+      });
+    }
 
-const placeBtn = document.getElementById('place-btn');
-const toolbar  = document.getElementById('transform-ui');
-const lockBtn  = document.getElementById('lock-btn');
-const debugEl  = document.getElementById('debug');
+    // --- Load library meta.json ---
+    async function loadLibrary() {
+      try {
+        const res = await fetch(META_PATH);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
 
-const moveUp     = document.getElementById('move-up');
-const moveDown   = document.getElementById('move-down');
-const moveLeft   = document.getElementById('move-left');
-const moveRight  = document.getElementById('move-right');
-const heightUp   = document.getElementById('height-up');
-const heightDown = document.getElementById('height-down');
-const rotLeft    = document.getElementById('rot-left');
-const rotRight   = document.getElementById('rot-right');
+        // Support both new (object) and old (array) formats
+        const rawModels = Array.isArray(raw) ? raw : (raw.models || []);
+        const rawCategories = Array.isArray(raw) ? null : (raw.categories || []);
 
-let lastCoords  = null;
-let activeBench = null;
-let benchCoords = null;
-let benchLocked = false;
+        // Build library items with explicit model + thumbnail paths
+        libraryItems = rawModels.map(item => ({
+          ...item,
+          modelUrl: `${MODEL_BASE}/${item.model}`,
+          thumbUrl: `${THUMB_BASE}/${item.thumbnail}`
+        }));
 
-/* Haversine distance */
-function haversine(lat1, lon1, lat2, lon2){
-  const R = 6378137;
-  const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
-  const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
+        if (rawCategories && rawCategories.length > 0) {
+          buildCategoriesFromMeta(rawCategories);
+        } else {
+          // Fallback to old behavior: infer categories from models
+          buildCategoriesFromLibrary();
+        }
 
-  const a =
-    Math.sin(dLat/2) ** 2 +
-    Math.cos(THREE.MathUtils.degToRad(lat1)) *
-    Math.cos(THREE.MathUtils.degToRad(lat2)) *
-    Math.sin(dLon/2) ** 2;
+        buildCategoryButtons();
+        setupSearch();
 
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
+        // Pick first category by default (used when search is empty)
+        if (categories.length > 0) {
+          currentCategoryId = categories[0].id;
+          setActiveCategoryButton(currentCategoryId);
+          renderGallery(currentCategoryId);
+        } else {
+          // No categories – just render all items
+          renderGallery(null);
+        }
+      } catch (err) {
+        console.error('Failed to load library meta.json:', err);
+        galleryTitle.textContent = 'Error loading library';
+      }
+    }
 
-/* Debug overlay */
-function updateDebug(){
-  let t = 'GPS: waiting…';
+    function buildCategoriesFromMeta(rawCategories) {
+      categories = rawCategories.map(cat => ({
+        id: cat.id,
+        label: cat.label || cat.id,
+        thumbUrl: `${THUMB_BASE}/${cat.thumbnail}`
+      }));
+    }
 
-  if (lastCoords){
-    t = `You:
+    // Fallback if you ever use the old "models-only" meta.json format
+    function buildCategoriesFromLibrary() {
+      const catSet = new Set();
+      libraryItems.forEach(item => {
+        (item.category || []).forEach(tag => catSet.add(tag));
+      });
+      categories = Array.from(catSet)
+        .sort()
+        .map(id => ({
+          id,
+          label: id.charAt(0).toUpperCase() + id.slice(1),
+          thumbUrl: 'https://via.placeholder.com/96x96?text=?'
+        }));
+    }
+
+    // Build vertical category buttons dynamically
+    function buildCategoryButtons() {
+      categoryColumn.innerHTML = '';
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'category-btn-vertical';
+        btn.dataset.category = cat.id;
+        btn.innerHTML = `
+          <img src="${cat.thumbUrl}" alt="${cat.label}" />
+          <span>${cat.label}</span>
+        `;
+        btn.addEventListener('click', () => {
+          currentCategoryId = cat.id;
+          setActiveCategoryButton(cat.id);
+          renderGallery(cat.id, searchInput.value);
+        });
+        categoryColumn.appendChild(btn);
+      });
+    }
+
+    function setActiveCategoryButton(catId) {
+      const buttons = categoryColumn.querySelectorAll('.category-btn-vertical');
+      buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === catId);
+      });
+    }
+
+    // --- Gallery render ---
+    // If searchTerm is non-empty → global search; otherwise filter by category
+    function renderGallery(categoryId, searchTerm = '') {
+      const term = (searchTerm || '').toLowerCase();
+
+      let items;
+      let titleBase;
+
+      if (term) {
+        // Global search mode across all models
+        items = libraryItems;
+        titleBase = 'All models';
+      } else {
+        // Category-based mode
+        if (categoryId) {
+          items = libraryItems.filter(item =>
+            (item.category || []).includes(categoryId)
+          );
+          const catObj = categories.find(c => c.id === categoryId);
+          titleBase = catObj ? catObj.label : categoryId;
+        } else {
+          items = libraryItems;
+          titleBase = 'All models';
+        }
+      }
+
+      const filtered = items.filter(item =>
+        item.name.toLowerCase().includes(term) ||
+        (item.description || '').toLowerCase().includes(term)
+      );
+
+      galleryGrid.innerHTML = '';
+
+      galleryTitle.textContent =
+        titleBase + (term ? ` – matching “${searchTerm}”` : '');
+
+      if (filtered.length === 0) {
+        galleryEmpty.style.display = 'block';
+        return;
+      } else {
+        galleryEmpty.style.display = 'none';
+      }
+
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'gallery-item';
+        div.draggable = true;
+        div.dataset.model = item.modelUrl;
+
+        div.innerHTML = `
+          <img src="${item.thumbUrl}" alt="${item.name}" />
+          <span>${item.name}</span>
+        `;
+
+        // drag: stash model URL + metadata
+        div.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('application/x-model-url', item.modelUrl);
+          e.dataTransfer.setData('text/plain', item.modelUrl);
+          e.dataTransfer.setData('application/x-model-meta', JSON.stringify({
+            id: item.id,
+            zoom: item.zoom,
+            yOffset: item.yOffset
+          }));
+        });
+
+        // optional click: (still stubbed) – later we can wire this to AR scene
+        div.addEventListener('click', () => {
+          console.log('Clicked model from gallery:', item);
+          // You can later call addModelToSceneAR(item) here if you want
+        });
+
+        galleryGrid.appendChild(div);
+      });
+    }
+
+    function setupSearch() {
+      searchInput.addEventListener('input', () => {
+        renderGallery(currentCategoryId, searchInput.value);
+      });
+    }
+
+    // --- Drag & Drop onto camera view (currently just logs) ---
+    function setupDragAndDrop() {
+      cameraView.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+
+      cameraView.addEventListener('drop', (e) => {
+        e.preventDefault();
+
+        const modelUrl =
+          e.dataTransfer.getData('application/x-model-url') ||
+          e.dataTransfer.getData('text/plain');
+
+        if (!modelUrl) return;
+
+        let meta = null;
+        const rawMeta = e.dataTransfer.getData('application/x-model-meta');
+        if (rawMeta) {
+          try { meta = JSON.parse(rawMeta); } catch {}
+        }
+
+        console.log('Dropped model on AR view:', modelUrl, meta);
+        // Later: integrate with AR placement (e.g., spawn this model instead of bench)
+      });
+    }
+
+    // --- AR.js / GPS bench code from your working example ---
+
+    const THREE   = AFRAME.THREE;
+
+    const scene  = document.querySelector('a-scene');
+    const camera = document.querySelector('[gps-new-camera]');
+
+    const placeBtn = document.getElementById('place-btn');
+    const toolbar  = document.getElementById('transform-ui');
+    const lockBtn  = document.getElementById('lock-btn');
+    const debugEl  = document.getElementById('debug');
+
+    const moveUp     = document.getElementById('move-up');
+    const moveDown   = document.getElementById('move-down');
+    const moveLeft   = document.getElementById('move-left');
+    const moveRight  = document.getElementById('move-right');
+    const heightUp   = document.getElementById('height-up');
+    const heightDown = document.getElementById('height-down');
+    const rotLeft    = document.getElementById('rot-left');
+    const rotRight   = document.getElementById('rot-right');
+
+    let lastCoords  = null;
+    let activeBench = null;
+    let benchCoords = null;
+    let benchLocked = false;
+
+    /* Haversine distance */
+    function haversine(lat1, lon1, lat2, lon2){
+      const R = 6378137;
+      const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
+      const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
+
+      const a =
+        Math.sin(dLat/2) ** 2 +
+        Math.cos(THREE.MathUtils.degToRad(lat1)) *
+        Math.cos(THREE.MathUtils.degToRad(lat2)) *
+        Math.sin(dLon/2) ** 2;
+
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+
+    /* Debug overlay */
+    function updateDebug(){
+      let t = 'GPS: waiting…';
+
+      if (lastCoords){
+        t = `You:
 lat ${lastCoords.latitude.toFixed(6)}
 lon ${lastCoords.longitude.toFixed(6)}`;
 
-    if (benchCoords){
-      const d = haversine(
-        lastCoords.latitude, lastCoords.longitude,
-        benchCoords.latitude, benchCoords.longitude
-      );
+        if (benchCoords){
+          const d = haversine(
+            lastCoords.latitude, lastCoords.longitude,
+            benchCoords.latitude, benchCoords.longitude
+          );
 
-      t += `
+          t += `
 
 Bench:
 lat ${benchCoords.latitude.toFixed(6)}
 lon ${benchCoords.longitude.toFixed(6)}
 dist ~ ${d.toFixed(1)} m`;
 
-      if (activeBench) {
-        const s = activeBench.getAttribute('scale');
-        if (s && typeof s.x === 'number') {
-          t += `\nscale ~ ${s.x.toFixed(2)}`;
-        }
-        const vis = activeBench.getAttribute('visible');
-        if (vis !== null) {
-          t += `\nvisible: ${vis}`;
+          if (activeBench) {
+            const s = activeBench.getAttribute('scale');
+            if (s && typeof s.x === 'number') {
+              t += `\nscale ~ ${s.x.toFixed(2)}`;
+            }
+            const vis = activeBench.getAttribute('visible');
+            if (vis !== null) {
+              t += `\nvisible: ${vis}`;
+            }
+          }
         }
       }
+
+      debugEl.textContent = t;
     }
-  }
 
-  debugEl.textContent = t;
-}
+    /* Scale bench + control visibility based on GPS distance */
+    function updateBenchScale(){
+      if (!lastCoords || !benchCoords || !activeBench) return;
 
-/* Scale bench + control visibility based on GPS distance */
-function updateBenchScale(){
-  if (!lastCoords || !benchCoords || !activeBench) return;
+      const d = haversine(
+        lastCoords.latitude, lastCoords.longitude,
+        benchCoords.latitude, benchCoords.longitude
+      );
 
-  const d = haversine(
-    lastCoords.latitude, lastCoords.longitude,
-    benchCoords.latitude, benchCoords.longitude
-  );
+      const MAX_VISIBLE_DIST = 20;  // meters
 
-  const MAX_VISIBLE_DIST = 20;  // meters
+      // If farther than 20m, hide bench completely
+      if (d > MAX_VISIBLE_DIST) {
+        activeBench.setAttribute('visible','false');
+        updateDebug();
+        return;
+      }
 
-  // If farther than 20m, hide bench completely
-  if (d > MAX_VISIBLE_DIST) {
-    activeBench.setAttribute('visible','false');
-    updateDebug();
-    return;
-  }
+      // Within 20m → visible
+      activeBench.setAttribute('visible','true');
 
-  // Within 20m → visible
-  activeBench.setAttribute('visible','true');
+      const NEAR = 3;
+      const FAR  = MAX_VISIBLE_DIST;
 
-  const NEAR = 3;
-  const FAR  = MAX_VISIBLE_DIST;
+      const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
+      const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
 
-  const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
-  const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
+      activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
 
-  activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
+      if (activeBench.object3D){
+        activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
+      }
 
-  if (activeBench.object3D){
-    activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
-  }
+      updateDebug();
+    }
 
-  updateDebug();
-}
+    /* GPS updates */
+    window.addEventListener('gps-camera-update-position', e=>{
+      if (!e.detail?.position) return;
 
-/* GPS updates */
-window.addEventListener('gps-camera-update-position', e=>{
-  if (!e.detail?.position) return;
+      lastCoords = {
+        latitude: e.detail.position.latitude,
+        longitude: e.detail.position.longitude
+      };
 
-  lastCoords = {
-    latitude: e.detail.position.latitude,
-    longitude: e.detail.position.longitude
-  };
+      placeBtn.disabled = false;
+      placeBtn.textContent = 'Place Bench Ahead';
 
-  placeBtn.disabled = false;
-  placeBtn.textContent = 'Place Bench Ahead';
+      updateBenchScale();
+    });
 
-  updateBenchScale();
-});
+    /* PLACE BENCH — ALWAYS SPAWNS IN FRONT */
+    placeBtn.onclick = ()=>{
+      if (!lastCoords) return;
 
-/* PLACE BENCH — ALWAYS SPAWNS IN FRONT */
-placeBtn.onclick = ()=>{
-  if (!lastCoords) return;
+      benchCoords = {
+        latitude: lastCoords.latitude,
+        longitude: lastCoords.longitude
+      };
 
-  benchCoords = {
-    latitude: lastCoords.latitude,
-    longitude: lastCoords.longitude
-  };
+      const bench = document.createElement('a-entity');
+      bench.setAttribute('gltf-model','assets/park_bench.glb');
+      bench.setAttribute(
+        'gps-new-entity-place',
+        `latitude:${benchCoords.latitude}; longitude:${benchCoords.longitude}`
+      );
 
-  const bench = document.createElement('a-entity');
-  bench.setAttribute('gltf-model','assets/park_bench.glb');
-  bench.setAttribute(
-    'gps-new-entity-place',
-    `latitude:${benchCoords.latitude}; longitude:${benchCoords.longitude}`
-  );
+      // offset z by 10
+      bench.setAttribute('position','0 0 -10');
 
-  // offset z by 10
-  bench.setAttribute('position','0 0 -10');
+      bench.setAttribute('rotation','0 0 0');
+      bench.setAttribute('scale','1 1 1');
 
-  bench.setAttribute('rotation','0 0 0');
-  bench.setAttribute('scale','1 1 1');
+      scene.appendChild(bench);
 
-  scene.appendChild(bench);
+      activeBench = bench;
+      benchLocked = false;
+      lockBtn.textContent = 'Lock';
+      toolbar.style.display = 'block';
 
-  activeBench = bench;
-  benchLocked = false;
-  lockBtn.textContent = 'Lock';
-  toolbar.style.display = 'block';
+      updateBenchScale();
+    };
 
-  updateBenchScale();
-};
+    /* HELPERS */
+    function getPos(){ return activeBench?.getAttribute('position'); }
+    function getRot(){ return activeBench?.getAttribute('rotation'); }
+    function setPos(p){ activeBench?.setAttribute('position', p); }
+    function setRot(r){ activeBench?.setAttribute('rotation', r); }
 
-/* HELPERS */
-function getPos(){ return activeBench?.getAttribute('position'); }
-function getRot(){ return activeBench?.getAttribute('rotation'); }
-function setPos(p){ activeBench?.setAttribute('position', p); }
-function setRot(r){ activeBench?.setAttribute('rotation', r); }
+    const MOVE_STEP   = 10;
+    const HEIGHT_STEP = 10;
+    const ROT_STEP    = 15;
 
-const MOVE_STEP   = 10;
-const HEIGHT_STEP = 10;
-const ROT_STEP    = 15;
+    /* RELATIVE MOVEMENT (camera-relative) */
+    function move(fwd, side){
+      if (!activeBench || benchLocked) return;
 
-/* RELATIVE MOVEMENT (camera-relative) */
-function move(fwd, side){
-  if (!activeBench || benchLocked) return;
+      const p = {...getPos()};
 
-  const p = {...getPos()};
+      // Camera forward direction
+      const fwdVec = new THREE.Vector3();
+      camera.object3D.getWorldDirection(fwdVec);
+      fwdVec.y = 0;
+      fwdVec.normalize();
 
-  // Camera forward direction
-  const fwdVec = new THREE.Vector3();
-  camera.object3D.getWorldDirection(fwdVec);
-  fwdVec.y = 0;
-  fwdVec.normalize();
+      // Right vector is perpendicular to forward on XZ plane
+      const rightVec = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
 
-  // Right vector is perpendicular to forward on XZ plane
-  const rightVec = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
+      // Combine forward/backward and strafe components
+      const dx = (fwdVec.x * fwd + rightVec.x * side) * MOVE_STEP;
+      const dz = (fwdVec.z * fwd + rightVec.z * side) * MOVE_STEP;
 
-  // Combine forward/backward and strafe components
-  const dx = (fwdVec.x * fwd + rightVec.x * side) * MOVE_STEP;
-  const dz = (fwdVec.z * fwd + rightVec.z * side) * MOVE_STEP;
+      p.x += dx;
+      p.z += dz;
 
-  p.x += dx;
-  p.z += dz;
+      setPos(p);
+    }
 
-  setPos(p);
-}
+    /* CONTROLS */
+    moveUp.onclick    = ()=>move( 1,  0);  // forward
+    moveDown.onclick  = ()=>move(-1,  0);  // backward
+    moveLeft.onclick  = ()=>move( 0, -1);  // left
+    moveRight.onclick = ()=>move( 0,  1);  // right
 
-/* CONTROLS */
-moveUp.onclick    = ()=>move( 1,  0);  // forward
-moveDown.onclick  = ()=>move(-1,  0);  // backward
-moveLeft.onclick  = ()=>move( 0, -1);  // left
-moveRight.onclick = ()=>move( 0,  1);  // right
+    heightUp.onclick = ()=>{
+      if (!activeBench || benchLocked) return;
+      const p = {...getPos()};
+      p.y += HEIGHT_STEP;
+      setPos(p);
+    };
+    heightDown.onclick = ()=>{
+      if (!activeBench || benchLocked) return;
+      const p = {...getPos()};
+      p.y -= HEIGHT_STEP;
+      setPos(p);
+    };
 
-heightUp.onclick = ()=>{
-  if (!activeBench || benchLocked) return;
-  const p = {...getPos()};
-  p.y += HEIGHT_STEP;
-  setPos(p);
-};
-heightDown.onclick = ()=>{
-  if (!activeBench || benchLocked) return;
-  const p = {...getPos()};
-  p.y -= HEIGHT_STEP;
-  setPos(p);
-};
+    rotLeft.onclick = ()=>{
+      if (!activeBench || benchLocked) return;
+      const r = {...getRot()};
+      r.y -= ROT_STEP;
+      setRot(r);
+    };
+    rotRight.onclick = ()=>{
+      if (!activeBench || benchLocked) return;
+      const r = {...getRot()};
+      r.y += ROT_STEP;
+      setRot(r);
+    };
 
-rotLeft.onclick = ()=>{
-  if (!activeBench || benchLocked) return;
-  const r = {...getRot()};
-  r.y -= ROT_STEP;
-  setRot(r);
-};
-rotRight.onclick = ()=>{
-  if (!activeBench || benchLocked) return;
-  const r = {...getRot()};
-  r.y += ROT_STEP;
-  setRot(r);
-};
+    /* LOCK */
+    lockBtn.onclick = ()=>{
+      if (!activeBench) return;
+      benchLocked = !benchLocked;
+      lockBtn.textContent = benchLocked ? "Unlock" : "Lock";
+      toolbar.style.display = benchLocked ? "none" : "block";
+    };
 
-/* LOCK */
-lockBtn.onclick = ()=>{
-  if (!activeBench) return;
-  benchLocked = !benchLocked;
-  lockBtn.textContent = benchLocked ? "Unlock" : "Lock";
-  toolbar.style.display = benchLocked ? "none" : "block";
-};
-</script>
-
+    // --- Init ---
+    window.addEventListener('load', () => {
+      checkLogin();        // 🔐 ensure user is logged in
+      setupDragAndDrop();
+      loadLibrary();
+      // No startWebcam(): AR.js owns the camera now
+    });
+  </script>
 </body>
 </html>

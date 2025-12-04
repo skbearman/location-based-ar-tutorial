@@ -1,0 +1,90 @@
+{
+  "categories": [
+    {
+      "id": "facilities",
+      "label": "Facilities",
+      "thumbnail": "cat_facilities.png"
+    },
+    {
+      "id": "pedestrian",
+      "label": "Pedestrian",
+      "thumbnail": "cat_pedestrian.png"
+    },
+    {
+      "id": "structures",
+      "label": "Structures",
+      "thumbnail": "cat_structures.png"
+    },
+    {
+      "id": "shade",
+      "label": "Shade",
+      "thumbnail": "cat_shade.png"
+    },
+    {
+      "id": "nature",
+      "label": "Nature",
+      "thumbnail": "cat_nature.png"
+    }
+  ],
+
+  "models": [
+    {
+      "id": "drinkingFountain",
+      "name": "Drinking Fountain",
+      "model": "drinking_fountain.glb",
+      "thumbnail": "drinkingfountain.png",
+      "description": "A 3D model of a drinking fountain",
+      "category": ["facilities"]
+    },
+    {
+      "id": "vendingMachine",
+      "name": "Vending Machine",
+      "model": "soda_vending_machine.glb",
+      "thumbnail": "vendingmachine.png",
+      "description": "A 3D model of a vending machine",
+      "category": ["facilities"]
+    },
+    {
+      "id": "pedestrianBridge",
+      "name": "Pedestrian Bridge",
+      "model": "footbridge.glb",
+      "description": "A 3D model of a pedestrian bridge",
+      "thumbnail": "pedbridge.png",
+      "category": ["pedestrian", "structures"]
+    },
+    {
+      "id": "crosswalkSignal",
+      "name": "Crosswalk Signals",
+      "model": "vintage_shanghai_crosswalk_signals.glb",
+      "description": "A 3D model of crosswalk signals",
+      "thumbnail": "crosswalksignals.png",
+      "category": ["pedestrian"]
+    },
+    {
+      "id": "ramada",
+      "name": "Ramada",
+      "model": "gazebo.glb",
+      "description": "A 3D model of a ramada",
+      "thumbnail": "ramada.png",
+      "category": ["structures", "shade"]
+    },
+    {
+      "id": "bench",
+      "name": "Bench",
+      "model": "park_bench.glb",
+      "description": "A 3D model of a park bench",
+      "thumbnail": "bench.png",
+      "category": ["structures"]
+    },
+    {
+      "id": "tree",
+      "name": "Tree",
+      "model": "maple_tree.glb",
+      "description": "A 3D model of a maple tree",
+      "thumbnail": "tree.png",
+      "category": ["nature", "shade"],
+      "zoom": 0.15,
+      "yOffset": 0
+    }
+  ]
+}
