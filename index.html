@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Combo Trial 2</title>
+  <title>shAred space AR</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -28,10 +28,40 @@
       overflow: hidden;
     }
 
-    .app-container {
+    /* Make body a flex column: header + main */
+    body {
       display: flex;
-      height: calc(100vh - 40px); /* leave space for header bar */
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    .top-bar {
+      flex: 0 0 40px;
+      height: 40px;
+      padding: 6px 12px;
+      background: #fafafa;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .top-bar button {
+      background:#e53935;
+      color:white;
+      border:none;
+      border-radius:6px;
+      padding:6px 12px;
+      cursor:pointer;
+    }
+
+    /* MAIN APP AREA: fills the rest of the viewport */
+    .app-container {
+      flex: 1;
+      display: flex;
       width: 100vw;
+      min-height: 0; /* important so children can scroll inside */
       overflow: hidden;
     }
 
@@ -66,6 +96,7 @@
       background: #f7f7f7;
       display: flex;
       flex-direction: column;
+      height: 100%; /* stretch to bottom */
     }
 
     /* Search bar */
@@ -73,6 +104,7 @@
       padding: 10px;
       border-bottom: 1px solid #ddd;
       background: #fff;
+      flex: 0 0 auto;
     }
 
     .search-input {
@@ -94,6 +126,7 @@
       flex: 1;
       display: flex;
       overflow: hidden;
+      min-height: 0;
     }
 
     /* Left vertical category column */
@@ -149,6 +182,7 @@
       flex: 1;
       padding: 10px;
       overflow-y: auto;
+      min-height: 0;
     }
 
     .gallery-title {
@@ -199,11 +233,11 @@
     @media (max-width: 768px) {
       .app-container {
         flex-direction: column;
-        height: auto;
       }
       aside.side-panel {
         width: 100%;
-        height: 45vh;
+        height: auto;
+        max-height: 45vh;
         border-right: none;
         border-bottom: 1px solid #ddd;
       }
@@ -337,29 +371,9 @@
 <body>
 
   <!-- HEADER: account info + logout -->
-  <div style="
-    height: 40px;
-    padding: 6px 12px;
-    background: #fafafa;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-  ">
+  <div class="top-bar">
     <div id="accountInfo">Checking login...</div>
-    <button
-      onclick="doLogout()"
-      style="
-        background:#e53935;
-        color:white;
-        border:none;
-        border-radius:6px;
-        padding:6px 12px;
-        cursor:pointer;
-      ">
-      Logout
-    </button>
+    <button onclick="doLogout()">Logout</button>
   </div>
 
   <!-- AR UI (bench placement) -->
