@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>fix orientation 2</title>
+<title>fix orientation + 20m visibility</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -217,7 +217,13 @@ dist ~ ${d.toFixed(1)} m`;
 
       if (activeBench) {
         const s = activeBench.getAttribute('scale');
-        t += `\nscale ~ ${s.x.toFixed(2)}`;
+        if (s && typeof s.x === 'number') {
+          t += `\nscale ~ ${s.x.toFixed(2)}`;
+        }
+        const vis = activeBench.getAttribute('visible');
+        if (vis !== null) {
+          t += `\nvisible: ${vis}`;
+        }
       }
     }
   }
@@ -225,7 +231,7 @@ dist ~ ${d.toFixed(1)} m`;
   debugEl.textContent = t;
 }
 
-/* Scale bench based on GPS distance */
+/* Scale bench + control visibility based on GPS distance */
 function updateBenchScale(){
   if (!lastCoords || !benchCoords || !activeBench) return;
 
@@ -234,8 +240,20 @@ function updateBenchScale(){
     benchCoords.latitude, benchCoords.longitude
   );
 
+  const MAX_VISIBLE_DIST = 20;  // meters
+
+  // If farther than 20m, hide bench completely
+  if (d > MAX_VISIBLE_DIST) {
+    activeBench.setAttribute('visible','false');
+    updateDebug();
+    return;
+  }
+
+  // Within 20m → visible
+  activeBench.setAttribute('visible','true');
+
   const NEAR = 3;
-  const FAR  = 50;
+  const FAR  = MAX_VISIBLE_DIST;
 
   const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
   const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
@@ -332,10 +350,10 @@ function move(fwd, side){
 }
 
 /* CONTROLS */
-moveUp.onclick    = ()=>move( 1,  0);  // forward (toward where camera faces)
+moveUp.onclick    = ()=>move( 1,  0);  // forward
 moveDown.onclick  = ()=>move(-1,  0);  // backward
-moveLeft.onclick  = ()=>move( 0, -1);  // strafe left
-moveRight.onclick = ()=>move( 0,  1);  // strafe right
+moveLeft.onclick  = ()=>move( 0, -1);  // left
+moveRight.onclick = ()=>move( 0,  1);  // right
 
 heightUp.onclick = ()=>{
   if (!activeBench || benchLocked) return;

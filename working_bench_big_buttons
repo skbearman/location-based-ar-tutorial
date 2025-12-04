@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Step Size Check</title>
+<title>fix orientation 2</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
 
-<!-- AR.js with GPS (RELIABLE CDN) -->
+<!-- AR.js with GPS -->
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/three.js/build/ar-threex-location-only.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
 
@@ -91,6 +91,20 @@ body {
   font-weight: 600;
   font-size: 0.95rem;
 }
+
+/* DEBUG */
+#debug {
+  position: fixed;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  background: rgba(0,0,0,0.6);
+  color: #0f0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  white-space: pre-line;
+  z-index: 9999;
+}
 </style>
 </head>
 
@@ -128,168 +142,234 @@ body {
   </div>
 </div>
 
+<div id="debug">GPS: waiting…</div>
+
 <a-scene
- embedded
- vr-mode-ui="enabled:false"
- arjs="sourceType:webcam; debugUIEnabled:true"
- renderer="antialias:true; alpha:true">
+  embedded
+  vr-mode-ui="enabled:false"
+  arjs="sourceType:webcam; debugUIEnabled:true"
+  renderer="antialias:true; alpha:true">
 
-  <!-- GPS camera -->
-  <a-camera gps-new-camera="gpsMinDistance:3; positionMinAccuracy:50"></a-camera>
-
+  <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
 </a-scene>
 
 <script>
+const THREE   = AFRAME.THREE;
 
-const THREE = AFRAME.THREE;
+const scene  = document.querySelector('a-scene');
+const camera = document.querySelector('[gps-new-camera]');
 
-const scene      = document.querySelector('a-scene');
-const camera     = document.querySelector('[gps-new-camera]');
-const placeBtn   = document.getElementById('place-btn');
-const toolbar    = document.getElementById('transform-ui');
-const lockBtn    = document.getElementById('lock-btn');
+const placeBtn = document.getElementById('place-btn');
+const toolbar  = document.getElementById('transform-ui');
+const lockBtn  = document.getElementById('lock-btn');
+const debugEl  = document.getElementById('debug');
 
 const moveUp     = document.getElementById('move-up');
 const moveDown   = document.getElementById('move-down');
 const moveLeft   = document.getElementById('move-left');
 const moveRight  = document.getElementById('move-right');
-
 const heightUp   = document.getElementById('height-up');
 const heightDown = document.getElementById('height-down');
-
 const rotLeft    = document.getElementById('rot-left');
 const rotRight   = document.getElementById('rot-right');
 
 let lastCoords  = null;
 let activeBench = null;
+let benchCoords = null;
+let benchLocked = false;
 
-/* GPS READY */
-camera.addEventListener('gps-camera-update-position', e => {
+/* Haversine distance */
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6378137;
+  const dLat = THREE.MathUtils.degToRad(lat2 - lat1);
+  const dLon = THREE.MathUtils.degToRad(lon2 - lon1);
 
-  const pos = e.detail.position;
-  if(!pos) return;
+  const a =
+    Math.sin(dLat/2) ** 2 +
+    Math.cos(THREE.MathUtils.degToRad(lat1)) *
+    Math.cos(THREE.MathUtils.degToRad(lat2)) *
+    Math.sin(dLon/2) ** 2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+/* Debug overlay */
+function updateDebug(){
+  let t = 'GPS: waiting…';
+
+  if (lastCoords){
+    t = `You:
+lat ${lastCoords.latitude.toFixed(6)}
+lon ${lastCoords.longitude.toFixed(6)}`;
+
+    if (benchCoords){
+      const d = haversine(
+        lastCoords.latitude, lastCoords.longitude,
+        benchCoords.latitude, benchCoords.longitude
+      );
+
+      t += `
+
+Bench:
+lat ${benchCoords.latitude.toFixed(6)}
+lon ${benchCoords.longitude.toFixed(6)}
+dist ~ ${d.toFixed(1)} m`;
+
+      if (activeBench) {
+        const s = activeBench.getAttribute('scale');
+        t += `\nscale ~ ${s.x.toFixed(2)}`;
+      }
+    }
+  }
+
+  debugEl.textContent = t;
+}
+
+/* Scale bench based on GPS distance */
+function updateBenchScale(){
+  if (!lastCoords || !benchCoords || !activeBench) return;
+
+  const d = haversine(
+    lastCoords.latitude, lastCoords.longitude,
+    benchCoords.latitude, benchCoords.longitude
+  );
+
+  const NEAR = 3;
+  const FAR  = 50;
+
+  const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
+  const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
+
+  activeBench.setAttribute('scale', `${scaleVal} ${scaleVal} ${scaleVal}`);
+
+  if (activeBench.object3D){
+    activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
+  }
+
+  updateDebug();
+}
+
+/* GPS updates */
+window.addEventListener('gps-camera-update-position', e=>{
+  if (!e.detail?.position) return;
 
   lastCoords = {
-    latitude:  pos.latitude,
-    longitude: pos.longitude
+    latitude: e.detail.position.latitude,
+    longitude: e.detail.position.longitude
   };
 
   placeBtn.disabled = false;
-  placeBtn.textContent = "Place Bench Here";
+  placeBtn.textContent = 'Place Bench Ahead';
 
+  updateBenchScale();
 });
 
+/* PLACE BENCH — ALWAYS SPAWNS IN FRONT */
+placeBtn.onclick = ()=>{
+  if (!lastCoords) return;
 
-/* PLACE BENCH */
-placeBtn.onclick = () => {
-
-  if(!lastCoords) return;
+  benchCoords = {
+    latitude: lastCoords.latitude,
+    longitude: lastCoords.longitude
+  };
 
   const bench = document.createElement('a-entity');
-
   bench.setAttribute('gltf-model','assets/park_bench.glb');
   bench.setAttribute(
     'gps-new-entity-place',
-    `latitude:${lastCoords.latitude}; longitude:${lastCoords.longitude}`
+    `latitude:${benchCoords.latitude}; longitude:${benchCoords.longitude}`
   );
 
-  bench.setAttribute('scale','1 1 1');
-  bench.setAttribute('position','0 0 0');
+  // offset z by 10
+  bench.setAttribute('position','0 0 -10');
 
-  const forward = new THREE.Vector3();
-  camera.object3D.getWorldDirection(forward);
-  const yaw = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-  bench.setAttribute('rotation', `0 ${yaw} 0`);
+  bench.setAttribute('rotation','0 0 0');
+  bench.setAttribute('scale','1 1 1');
 
   scene.appendChild(bench);
 
   activeBench = bench;
-  toolbar.style.display = "block";
+  benchLocked = false;
+  lockBtn.textContent = 'Lock';
+  toolbar.style.display = 'block';
+
+  updateBenchScale();
 };
 
-
 /* HELPERS */
-function getPos(){
-  return activeBench?.getAttribute('position');
-}
-function getRot(){
-  return activeBench?.getAttribute('rotation');
-}
+function getPos(){ return activeBench?.getAttribute('position'); }
+function getRot(){ return activeBench?.getAttribute('rotation'); }
+function setPos(p){ activeBench?.setAttribute('position', p); }
+function setRot(r){ activeBench?.setAttribute('rotation', r); }
 
-function setPos(p){
-  activeBench?.setAttribute('position', p);
-}
-function setRot(r){
-  activeBench?.setAttribute('rotation', r);
-}
-
-
-const MOVE_STEP   = 5;
-const HEIGHT_STEP = 5;
+const MOVE_STEP   = 10;
+const HEIGHT_STEP = 10;
 const ROT_STEP    = 15;
 
-
-/* RELATIVE MOVE */
+/* RELATIVE MOVEMENT (camera-relative) */
 function move(fwd, side){
-
-  if(!activeBench) return;
+  if (!activeBench || benchLocked) return;
 
   const p = {...getPos()};
 
+  // Camera forward direction
   const fwdVec = new THREE.Vector3();
   camera.object3D.getWorldDirection(fwdVec);
   fwdVec.y = 0;
   fwdVec.normalize();
 
-  const right = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
+  // Right vector is perpendicular to forward on XZ plane
+  const rightVec = new THREE.Vector3(fwdVec.z, 0, -fwdVec.x);
 
-  p.x += (fwdVec.x * fwd + right.x * side) * MOVE_STEP;
-  p.z += (fwdVec.z * fwd + right.z * side) * MOVE_STEP;
+  // Combine forward/backward and strafe components
+  const dx = (fwdVec.x * fwd + rightVec.x * side) * MOVE_STEP;
+  const dz = (fwdVec.z * fwd + rightVec.z * side) * MOVE_STEP;
+
+  p.x += dx;
+  p.z += dz;
 
   setPos(p);
 }
 
-
-/* BUTTON EVENTS */
-moveUp.onclick    = ()=>move( 1,  0);
-moveDown.onclick  = ()=>move(-1,  0);
-moveLeft.onclick  = ()=>move( 0, -1);
-moveRight.onclick = ()=>move( 0,  1);
+/* CONTROLS */
+moveUp.onclick    = ()=>move( 1,  0);  // forward (toward where camera faces)
+moveDown.onclick  = ()=>move(-1,  0);  // backward
+moveLeft.onclick  = ()=>move( 0, -1);  // strafe left
+moveRight.onclick = ()=>move( 0,  1);  // strafe right
 
 heightUp.onclick = ()=>{
-  if(!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const p = {...getPos()};
   p.y += HEIGHT_STEP;
   setPos(p);
 };
-
 heightDown.onclick = ()=>{
-  if(!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const p = {...getPos()};
   p.y -= HEIGHT_STEP;
   setPos(p);
 };
 
 rotLeft.onclick = ()=>{
-  if(!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const r = {...getRot()};
   r.y -= ROT_STEP;
   setRot(r);
 };
-
 rotRight.onclick = ()=>{
-  if(!activeBench) return;
+  if (!activeBench || benchLocked) return;
   const r = {...getRot()};
   r.y += ROT_STEP;
   setRot(r);
 };
 
-/* LOCK TOOLBAR */
+/* LOCK */
 lockBtn.onclick = ()=>{
-  activeBench = null;
-  toolbar.style.display = "none";
+  if (!activeBench) return;
+  benchLocked = !benchLocked;
+  lockBtn.textContent = benchLocked ? "Unlock" : "Lock";
+  toolbar.style.display = benchLocked ? "none" : "block";
 };
-
 </script>
 
 </body>
