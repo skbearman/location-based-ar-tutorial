@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>shAred space AR</title>
+  <title>4 shAred space AR</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -28,10 +28,11 @@
       overflow: hidden;
     }
 
-    /* Make body a flex column: header + main */
+    /* Body = header + main app */
     body {
       display: flex;
       flex-direction: column;
+      background: #000; /* nice fallback behind AR */
     }
 
     /* HEADER */
@@ -45,6 +46,8 @@
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
+      position: relative;
+      z-index: 10; /* above AR */
     }
 
     .top-bar button {
@@ -56,37 +59,34 @@
       cursor:pointer;
     }
 
-    /* MAIN APP AREA: fills the rest of the viewport */
+    /* MAIN APP AREA: left panel + right camera region */
     .app-container {
       flex: 1;
       display: flex;
       width: 100vw;
-      min-height: 0; /* important so children can scroll inside */
+      min-height: 0;
       overflow: hidden;
+      position: relative;
+      z-index: 5; /* above AR */
     }
 
-    /* RIGHT: AR camera view */
+    /* RIGHT: logical camera view area (over AR) */
     .camera-view {
       flex: 1;
       position: relative;
-      background: #000;
+      /* background transparent so AR shows through */
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: stretch;
       overflow: hidden;
     }
 
-    /* Make a-scene fill the camera pane */
-    .camera-view a-scene {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Overlay container for future layering */
+    /* We still keep an overlay container in case you want HUD stuff later */
     #sceneOverlay {
       position: absolute;
       inset: 0;
       pointer-events: none;
+      z-index: 6;
     }
 
     /* LEFT: side panel */
@@ -96,7 +96,9 @@
       background: #f7f7f7;
       display: flex;
       flex-direction: column;
-      height: 100%; /* stretch to bottom */
+      height: 100%;
+      position: relative;
+      z-index: 6; /* on top of AR */
     }
 
     /* Search bar */
@@ -257,7 +259,7 @@
       background: rgba(0,0,0,0.35);
       padding: 0.6rem 0.9rem;
       border-radius: 999px;
-      z-index: 9999;
+      z-index: 20;
       backdrop-filter: blur(6px);
     }
 
@@ -287,7 +289,7 @@
       padding: 0.6rem 0.75rem;
       border-radius: 12px;
       backdrop-filter: blur(6px);
-      z-index: 9999;
+      z-index: 20;
       display: none;
     }
 
@@ -333,38 +335,26 @@
       border-radius: 6px;
       font-size: 0.7rem;
       white-space: pre-line;
-      z-index: 9999;
+      z-index: 20;
     }
 
-    /* --- AR.js video positioning fix --- */
+    /* --- A-FRAME / AR LAYER --- */
 
-    /* Desktop layout: header = 40px tall, sidebar = 360px wide */
-    .arjs-video {
-      position: fixed !important;
-      top: 40px;                    /* below header */
-      left: 360px;                  /* to the right of side panel */
-      width: calc(100vw - 360px);
+    /* Make A-Frame fill the viewport area below the header, behind UI */
+    a-scene {
+      position: fixed;
+      top: 40px; /* below header */
+      left: 0;
+      width: 100vw;
       height: calc(100vh - 40px);
-      object-fit: cover;
-      z-index: 0;
+      z-index: 0; /* behind panels + UI */
     }
 
-    /* Make A-Frame canvas always cover the scene area */
-    a-scene,
     a-scene .a-canvas,
     a-scene canvas {
       width: 100% !important;
       height: 100% !important;
-    }
-
-    /* Mobile override: sidebar stacks on top, so AR fills below header */
-    @media (max-width: 768px) {
-      .arjs-video {
-        top: 40px;                 /* still under header */
-        left: 0;
-        width: 100vw;
-        height: calc(100vh - 40px);
-      }
+      display: block;
     }
   </style>
 </head>
@@ -411,6 +401,17 @@
 
   <div id="debug">GPS: waiting…</div>
 
+  <!-- AR SCENE LAYER (behind everything) -->
+  <a-scene
+    embedded
+    vr-mode-ui="enabled:false"
+    arjs="sourceType:webcam; debugUIEnabled:true"
+    renderer="antialias:true; alpha:true">
+
+    <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
+  </a-scene>
+
+  <!-- FOREGROUND APP LAYOUT -->
   <div class="app-container">
     <!-- LEFT: Side panel -->
     <aside class="side-panel">
@@ -440,17 +441,8 @@
       </div>
     </aside>
 
-    <!-- RIGHT: AR.js camera + GPS-based bench -->
+    <!-- RIGHT: logical camera view (over AR) -->
     <div class="camera-view" id="cameraView">
-      <a-scene
-        embedded
-        vr-mode-ui="enabled:false"
-        arjs="sourceType:webcam; debugUIEnabled:true"
-        renderer="antialias:true; alpha:true">
-
-        <a-camera gps-new-camera="gpsMinDistance:1; positionMinAccuracy:100"></a-camera>
-      </a-scene>
-
       <div id="sceneOverlay"></div>
     </div>
   </div>
