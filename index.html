@@ -26,7 +26,8 @@
       height: 100%;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
         sans-serif;
-      overflow: hidden; /* no scrolling; full-viewport app layout */
+      overflow-x: hidden;
+      overflow-y: auto; /* allow vertical scroll so nothing is cut off */
     }
 
     /* Body = header + main app */
