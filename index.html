@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bench appear</title>
+<title>Bench – 3m GPS Offset + Debug + Scale</title>
 
 <!-- A-Frame -->
 <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -224,16 +224,13 @@ dist ~ ${d.toFixed(1)} m`;
           text += `
 scale ~ ${s.x.toFixed(2)}`;
         }
-        const vis = activeBench.getAttribute('visible');
-        text += `
-visible: ${vis}`;
       }
     }
   }
   debugEl.textContent = text;
 }
 
-/* Scale + show/hide bench based on GPS distance */
+/* Scale bench based on GPS distance */
 function updateBenchScale(){
   if (!lastCoords || !benchCoords || !activeBench) return;
 
@@ -242,27 +239,15 @@ function updateBenchScale(){
     benchCoords.latitude, benchCoords.longitude
   );
 
-  const MAX_VISIBLE_DIST = 20;  // meters
+  // Tunable parameters
+  const NEAR = 3;   // meters or closer → full size
+  const FAR  = 50;  // meters or farther → min size
 
-  // If farther than 20m, hide bench completely
-  if (d > MAX_VISIBLE_DIST) {
-    activeBench.setAttribute('visible', 'false');
-    updateDebug();
-    return;
-  }
-
-  // Within 20m → visible
-  activeBench.setAttribute('visible', 'true');
-
-  // Tunable parameters for scaling
-  const NEAR = 3;                // meters or closer → full size
-  const FAR  = MAX_VISIBLE_DIST; // scale down as you approach 20m
-
-  // Normalized 0–1 based on distance in [NEAR, FAR]
+  // Normalized 0–1 based on distance
   const t = THREE.MathUtils.clamp((d - NEAR) / (FAR - NEAR), 0, 1);
 
   // Lerp between 1.0 (near) and 0.2 (far)
-  // For stronger effect, you can change to (1.5, 0.05, t)
+  // You can change to (1.5, 0.05, t) if you want a more dramatic effect
   const scaleVal = THREE.MathUtils.lerp(1.0, 0.2, t);
 
   // A-Frame attribute
@@ -273,7 +258,7 @@ function updateBenchScale(){
     activeBench.object3D.scale.set(scaleVal, scaleVal, scaleVal);
   }
 
-  // Update debug to reflect new scale / visibility
+  // Update debug to reflect new scale
   updateDebug();
 }
 
@@ -290,6 +275,7 @@ window.addEventListener('gps-camera-update-position', e => {
   placeBtn.disabled = false;
   placeBtn.textContent = "Place Bench Ahead";
 
+  updateDebug();
   updateBenchScale();
 });
 
@@ -328,6 +314,7 @@ placeBtn.onclick = () => {
   const benchLon = THREE.MathUtils.radToDeg(lon2);
 
   benchCoords = { latitude: benchLat, longitude: benchLon };
+  updateDebug();
 
   const bench = document.createElement('a-entity');
   bench.setAttribute('gltf-model','assets/park_bench.glb');
@@ -335,8 +322,8 @@ placeBtn.onclick = () => {
     'gps-new-entity-place',
     `latitude:${benchLat}; longitude:${benchLon}`
   );
-  bench.setAttribute('scale','1 1 1');       // back to original
-  bench.setAttribute('position','0 0 0');    // no recentering
+  bench.setAttribute('scale','1 1 1');
+  bench.setAttribute('position','0 0 0');
 
   const yawDeg = THREE.MathUtils.radToDeg(bearingRad);
   bench.setAttribute('rotation', `0 ${yawDeg} 0`);
@@ -415,7 +402,7 @@ rotRight.onclick = ()=>{
   setRot(r);
 };
 
-/* LOCK TOOLBAR (only locks transforms, not scaling/visibility) */
+/* LOCK TOOLBAR (only locks transforms, not scaling) */
 lockBtn.onclick = ()=>{
   if (!activeBench) return;
 
